@@ -51,14 +51,19 @@ class RecipeDraft {
     this.cuisine,
     this.theme = RecipeTheme.plain,
     this.accentColor,
+    List<Diet>? diets,
+    this.nutrition = Nutrition.empty,
     List<DraftIngredient>? ingredients,
     List<DraftStep>? steps,
     List<String>? tags,
-  })  : ingredients = ingredients ?? <DraftIngredient>[],
+  })  : diets = diets ?? <Diet>[],
+        ingredients = ingredients ?? <DraftIngredient>[],
         steps = steps ?? <DraftStep>[],
         tags = tags ?? <String>[];
 
   final String? id;
+  final List<Diet> diets;
+  Nutrition nutrition;
   String title;
   String description;
   MealType mealType;
@@ -97,6 +102,8 @@ class RecipeDraft {
         cuisine: cuisine,
         theme: theme,
         accentColor: accentColor,
+        diets: List<Diet>.of(diets),
+        nutrition: nutrition,
         ingredients: List<DraftIngredient>.of(ingredients),
         steps: List<DraftStep>.of(steps),
         tags: List<String>.of(tags),
@@ -111,8 +118,10 @@ class RecipeFilter {
     this.tag,
     this.includePublic = false,
     this.cuisine,
+    this.diets = const <Diet>[],
   });
 
+  final List<Diet> diets;
   final Cuisine? cuisine;
   final MealType? mealType;
   final Season? season;
@@ -125,6 +134,7 @@ class RecipeFilter {
       season != null ||
       query.isNotEmpty ||
       tag != null ||
+      diets.isNotEmpty ||
       cuisine != null;
 
   RecipeFilter copyWith({
@@ -134,12 +144,14 @@ class RecipeFilter {
     String? tag,
     bool? includePublic,
     Cuisine? cuisine,
+    List<Diet>? diets,
     bool clearCuisine = false,
     bool clearMealType = false,
     bool clearSeason = false,
     bool clearTag = false,
   }) =>
       RecipeFilter(
+        diets: diets ?? this.diets,
         mealType: clearMealType ? null : (mealType ?? this.mealType),
         season: clearSeason ? null : (season ?? this.season),
         query: query ?? this.query,
@@ -162,7 +174,8 @@ class RecipeRepository {
       'base_servings, prep_minutes, cook_minutes, cover_image_path, '
       'source_url, external_video_url, import_source, is_public, '
       'forked_from_recipe_id, created_at, cuisine, theme, accent_color, '
-      'background_image_path, '
+      'background_image_path, diets, calories, protein_g, carbs_g, fat_g, '
+      'fiber_g, sugar_g, sodium_mg, '
       'recipe_tags(tags(name))';
 
   static const String _detailColumns = '$_listColumns, '
@@ -202,6 +215,12 @@ class RecipeRepository {
       if (filter.cuisine != null) {
         builder = builder.eq('cuisine', filter.cuisine!.wire);
       }
+      if (filter.diets.isNotEmpty) {
+        builder = builder.contains(
+          'diets',
+          filter.diets.map((Diet d) => d.wire).toList(),
+        );
+      }
       if (filter.season != null) {
         builder = builder.inFilter(
           'season',
@@ -237,15 +256,20 @@ class RecipeRepository {
   Future<List<Recipe>> feed({
     Cuisine? cuisine,
     MealType? mealType,
+    List<Diet> diets = const <Diet>[],
     String query = '',
     int limit = 24,
     int offset = 0,
   }) async {
     try {
-      PostgrestFilterBuilder<List<Map<String, dynamic>>> builder = _client
-          .from('recipes')
-          .select(_feedColumns)
-          .eq('is_public', true);
+      PostgrestFilterBuilder<List<Map<String, dynamic>>> builder =
+          _client.from('recipes').select(_feedColumns).eq('is_public', true);
+      if (diets.isNotEmpty) {
+        builder = builder.contains(
+          'diets',
+          diets.map((Diet d) => d.wire).toList(),
+        );
+      }
       if (cuisine != null) builder = builder.eq('cuisine', cuisine.wire);
       if (mealType != null) builder = builder.eq('meal_type', mealType.wire);
       if (query.trim().isNotEmpty) {
@@ -267,7 +291,8 @@ class RecipeRepository {
       'id, library_id, title, description, meal_type, season, '
       'base_servings, prep_minutes, cook_minutes, cover_image_path, '
       'import_source, is_public, forked_from_recipe_id, created_at, '
-      'cuisine, theme, accent_color';
+      'cuisine, theme, accent_color, diets, calories, protein_g, carbs_g, '
+      'fat_g, fiber_g, sugar_g, sodium_mg';
 
   Future<Recipe> byId(String recipeId) async {
     try {
@@ -335,6 +360,14 @@ class RecipeRepository {
       'cuisine': draft.cuisine?.wire,
       'theme': draft.theme.wire,
       'accent_color': draft.accentColor,
+      'diets': draft.diets.map((Diet d) => d.wire).toSet().toList(),
+      'calories': draft.nutrition.calories?.clamp(0, 5000),
+      'protein_g': draft.nutrition.proteinG?.clamp(0, 500),
+      'carbs_g': draft.nutrition.carbsG?.clamp(0, 500),
+      'fat_g': draft.nutrition.fatG?.clamp(0, 500),
+      'fiber_g': draft.nutrition.fiberG?.clamp(0, 500),
+      'sugar_g': draft.nutrition.sugarG?.clamp(0, 500),
+      'sodium_mg': draft.nutrition.sodiumMg?.clamp(0, 20000),
     };
 
     try {

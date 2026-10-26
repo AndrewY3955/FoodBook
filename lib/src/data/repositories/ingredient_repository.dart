@@ -21,16 +21,14 @@ class IngredientRepository {
   }) async {
     // Validated before it can reach a filter expression, not merely
     // trusted because of where it came from.
-    final String library =
-        PostgrestSafe.requireUuid(libraryId, 'libraryId');
+    final String library = PostgrestSafe.requireUuid(libraryId, 'libraryId');
     final String? pattern = PostgrestSafe.likePattern(
         InputSanitizer.singleLine(query, maxLength: 60));
 
     try {
       PostgrestFilterBuilder<List<Map<String, dynamic>>> builder = _client
           .from('ingredients')
-          .select(
-              'id, name, grocery_category, default_unit, library_id')
+          .select('id, name, grocery_category, default_unit, library_id')
           .or('library_id.is.null,library_id.eq.$library');
 
       if (pattern != null) builder = builder.ilike('name', pattern);
@@ -58,8 +56,7 @@ class IngredientRepository {
     final String clean = InputSanitizer.singleLine(name, maxLength: 80);
     if (clean.isEmpty) throw const Failure('That ingredient has no name.');
 
-    final String library =
-        PostgrestSafe.requireUuid(libraryId, 'libraryId');
+    final String library = PostgrestSafe.requireUuid(libraryId, 'libraryId');
     // Exact-match lookup: the term is stripped of wildcard characters so
     // a name containing '%' cannot broaden the match.
     final String exact = PostgrestSafe.likeExact(clean);
@@ -67,8 +64,7 @@ class IngredientRepository {
     try {
       final List<Map<String, dynamic>> existing = await _client
           .from('ingredients')
-          .select(
-              'id, name, grocery_category, default_unit, library_id')
+          .select('id, name, grocery_category, default_unit, library_id')
           .or('library_id.is.null,library_id.eq.$library')
           .ilike('name', exact)
           .limit(1);
@@ -83,8 +79,7 @@ class IngredientRepository {
             'grocery_category': category.wire,
             'default_unit': defaultUnit.wire,
           })
-          .select(
-              'id, name, grocery_category, default_unit, library_id')
+          .select('id, name, grocery_category, default_unit, library_id')
           .single();
 
       return Ingredient.fromJson(created);

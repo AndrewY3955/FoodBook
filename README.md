@@ -1,13 +1,18 @@
 # CookistryBook
 
-Recipe box, pantry matcher and meal planner. Flutter client, Supabase backend,
-one codebase from phone to desktop.
+Shared recipe library with URL import, pantry matching, meal planning and
+shopping lists. Flutter client, Supabase backend, one codebase from phone to
+desktop.
+
+The app includes email/password sign-in, recipe authoring and import, shared
+library switching, pantry matching, weekly meal planning, shopping lists, and
+guided cooking. Library settings let members inspect the roster, let owners
+and admins rename the library, and let any member leave. Owners and admins can
+invite people with a single-use code (migration 0009); invitees join with it.
 
 **Read `VERIFICATION.md` before trusting anything here.** It states, per claim,
-what was actually executed and what was not. In short: the database layer is
-verified against a real PostgreSQL instance with an 88-assertion suite; the
-Edge Function guards are verified with a 55-assertion suite; **no Dart was ever
-compiled**, because the build environment had no Flutter toolchain.
+what was actually executed and what was not. Current Flutter checks pass:
+`flutter analyze`, 58 unit tests, and a web production build. The PostgreSQL suite rebuilds the full migration chain and passes 113 assertions (see `VERIFICATION.md`).
 
 ---
 
@@ -21,7 +26,12 @@ supabase/
     0003_functions_triggers.sql         security helpers, integrity triggers, engines
     0004_rls_policies.sql               the security perimeter
     0005_storage_policies.sql           private cover-image bucket
-    0006_optional_active_claim_hardening.sql   OPTIONAL — read the header first
+    (0006 optional hardening lives in supabase/optional/ so it is not applied by default)
+    0007_rename_to_libraries.sql         final cookbook/library names
+    0008_rebuild_function_bodies.sql     repair renamed SQL function bodies
+    0009_library_invitations.sql         hashed single-use invitation tokens + RPCs
+    0010_library_creator_can_read_unclaimed.sql   fix: creating a library (INSERT RETURNING)
+    0011_library_members_profile_fk.sql  fix: member list embed needs a FK to profiles
   seed.sql                              catalog + three demo tenants
   functions/import-recipe/
     index.ts                            the handler
@@ -29,9 +39,10 @@ supabase/
     guards.test.ts                      55 assertions incl. the SSRF matrix
   tests/
     _local_harness.sql                  LOCAL ONLY — fakes the Supabase platform
-    rls_negative_control.sql            88 assertions
-    rebuild.sh                          drop, recreate, migrate, seed
-    run_tests.sh                        rebuild then run — use this one
+    rls_negative_control.sql            113 assertions
+    rebuild.sh                          applies 0001-0005, 0007-0011 + seed
+    run_tests.sh                        rebuild + run suite (needs local PostgreSQL)
+    run_tests_docker.ps1                same, in a throwaway postgres:16 container
     LAST_RUN.txt                        output of the last verified run
     URL_CORPUS_SERVER.txt               26-payload URL corpus, server side
 
@@ -42,13 +53,13 @@ lib/
     core/security/   input sanitiser, password policy, secure token storage
     data/models/     enums + row types
     data/repositories/   one per aggregate
-    state/           Riverpod graph and controllers   (Phase 2)
-    ui/responsive/   breakpoints + adaptive navigation shell  (Phase 2)
-    ui/screens/      the views  (Phase 3)
+    state/           Riverpod graph and controllers
+    ui/responsive/   breakpoints + adaptive navigation shell
+    ui/screens/      recipe, planner, pantry, shopping, import and cooking views
     ui/widgets/      shared widgets
     platform/        native OS timer handoff
     theme/           Material 3 theme + cooking-mode sizing
-test/                                   Dart unit tests — NEVER EXECUTED
+test/                                   Dart unit tests
 
 tooling/
   check_url_rules.js / url_corpus.json  client-rule cross-check
@@ -59,20 +70,20 @@ tooling/
 ## Running the database locally
 
 ```bash
-supabase start
+supabase start             # prints API_URL and PUBLISHABLE_KEY
 supabase db reset          # applies migrations/ then seed.sql
+flutter run -d chrome \
+  --dart-define=SUPABASE_URL=http://127.0.0.1:54321 \
+  --dart-define=SUPABASE_PUBLISHABLE_KEY=<PUBLISHABLE_KEY from supabase start>
 ```
 
-To run the verification suite against a plain PostgreSQL instance instead
-(which is how the 88 assertions were produced):
+Run the PostgreSQL suite (rebuilds from zero through migration 0011):
 
-```bash
-./supabase/tests/run_tests.sh
+```powershell
+powershell -File supabase\tests\run_tests_docker.ps1
 ```
 
-`run_tests.sh` rebuilds from zero first. The suite is not idempotent — section
-8c commits rows — so running the SQL file directly against a used database will
-produce spurious failures in section 1.
+or `supabase/tests/run_tests.sh` on a host with PostgreSQL.
 
 `_local_harness.sql` fabricates `auth.users`, `auth.uid()`, `auth.jwt()`, the
 PostgREST roles and a minimal `storage` schema. **Never run it against a real
@@ -162,7 +173,34 @@ the seeded accounts cannot sign in with a password.
 
 ---
 
+## Pictures, themes and Discover
+
+Migration `0012_recipe_presentation.sql` adds per-recipe `theme`, `accent_color`,
+`cuisine`, a background image and up to 12 extra photos (`recipe_images`). Apply
+it to a hosted project before shipping this client. The **Discover** tab lists
+public recipes only and filters by meal type and cuisine with the category
+sliders (also used in the Recipe Box). Cuisine is a closed column because tags
+are only readable inside their own library.
+
+API tests: `tooling/recipe-workflow-tests` (run the `*.test.mjs` files with
+`node --test`). `simulate-users.mjs [n]` runs n concurrent virtual people
+against a local stack; `tooling/ui-personas/personas.mjs [n]` drives the web
+build in headless Edge (set `PHOTO_DIR` for fixtures; Edge path is in-script).
+
 ## Known trade-offs
+
+**Forks and account deletion.** A fork copies text, ingredient notes, cuisine,
+theme, accent, cover, background and every photo (files are copied into the
+forker's own storage prefix, so they never depend on the source). Deleting an
+account (`delete_my_account`, migration 0013) removes the user's libraries they
+alone belong to, recipes they created in shared libraries, and their files;
+forks held by other people survive. Apply 0012 and 0013 to the hosted project.
+
+**Large photos are still slow to save.** Re-encoding happens in Dart on the
+browser's main thread: four 12 MP phone photos now take ~45 seconds on average
+in headless Edge after tuning. Originals over 5 MB are rejected by the bucket,
+so resize/re-encode is required. Moving it to native browser image pipelines
+would still be the next performance win.
 
 **Recipe save is not atomic.** PostgREST has no multi-statement transaction, so
 saving a recipe replaces its children with delete-then-insert across several

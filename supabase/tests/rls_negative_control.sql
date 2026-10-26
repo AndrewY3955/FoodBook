@@ -675,4 +675,211 @@ select test.eq('10.7 smuggled % wildcard stays inside the tenant',
   1::bigint);
 
 \echo ''
+\echo '================ 11. INVITATIONS ================'
+
+reset role;
+create table if not exists test.tok (k text primary key, v text);
+grant all on test.tok to anon, authenticated;
+
+reset role;
+select set_config('request.jwt.claims',
+  '{"sub":"11111111-1111-4111-8111-111111111111","role":"authenticated","email":"ana@example.com"}', false);
+set role authenticated;
+
+insert into test.tok
+  select 'open', token from public.create_library_invitation(test.library('Rivera Family Cookbook'), 'member');
+insert into test.tok
+  select 'bound', token from public.create_library_invitation(
+    test.library('Rivera Family Cookbook'), 'member', 'Dana@Example.com');
+insert into test.tok
+  select 'revoked', token from public.create_library_invitation(test.library('Rivera Family Cookbook'));
+
+select test.eq('11.1 admin can create an invitation',
+  (select count(*) from public.library_invitations), 3::bigint);
+select test.eq('11.2 only the hash is stored (token column does not exist)',
+  (select count(*) from information_schema.columns
+    where table_name = 'library_invitations' and column_name = 'token'), 0::bigint);
+select test.denied('11.3 direct INSERT into invitations is refused',
+  format($q$insert into public.library_invitations (library_id, token_hash, expires_at)
+            values (%L, '\x00', now() + interval '1 day')$q$, test.library('Rivera Family Cookbook')));
+select test.denied('11.4 owner role cannot be invited',
+  format($q$select public.create_library_invitation(%L, 'owner')$q$, test.library('Rivera Family Cookbook')));
+select test.denied('11.5 excessive expiry is refused',
+  format($q$select public.create_library_invitation(%L, 'member', null, 100000)$q$,
+         test.library('Rivera Family Cookbook')));
+select test.denied('11.6 token_hash is not readable',
+  $q$select token_hash from public.library_invitations$q$);
+
+select public.revoke_library_invitation(
+  (select i.id from public.library_invitations i
+    where i.accepted_at is null and i.revoked_at is null and i.invited_email is null
+    order by i.created_at desc, i.id limit 1));
+
+reset role;
+select set_config('request.jwt.claims',
+  '{"sub":"33333333-3333-4333-8333-333333333333","role":"authenticated","email":"cara@example.com"}', false);
+set role authenticated;
+
+select test.denied('11.7 non-member cannot create an invitation',
+  format($q$select public.create_library_invitation(%L)$q$, test.library('Rivera Family Cookbook')));
+select test.eq('11.8 non-member cannot list invitations',
+  (select count(*) from public.library_invitations
+    where library_id = test.library('Rivera Family Cookbook')), 0::bigint);
+select test.denied('11.9 garbage token is refused',
+  $q$select public.accept_library_invitation('nope')$q$);
+select test.denied('11.10 revoked token is refused',
+  $q$select public.accept_library_invitation((select v from test.tok where k = 'revoked'))$q$);
+select test.denied('11.11 email-bound token refused for a different email',
+  $q$select public.accept_library_invitation((select v from test.tok where k = 'bound'))$q$);
+
+reset role;
+select set_config('request.jwt.claims', '{"role":"anon"}', false);
+set role anon;
+select test.denied('11.12 anon cannot accept an invitation',
+  $q$select public.accept_library_invitation((select v from test.tok where k = 'open'))$q$);
+
+reset role;
+select set_config('request.jwt.claims',
+  '{"sub":"33333333-3333-4333-8333-333333333333","role":"authenticated","email":"cara@example.com"}', false);
+set role authenticated;
+select public.accept_library_invitation((select v from test.tok where k = 'open'));
+select test.eq('11.13 valid token makes Cara a member',
+  (select count(*) from public.library_members
+    where library_id = test.library('Rivera Family Cookbook')
+      and user_id = '33333333-3333-4333-8333-333333333333' and revoked_at is null), 1::bigint);
+select test.denied('11.14 token is single-use',
+  $q$select public.accept_library_invitation((select v from test.tok where k = 'open'))$q$);
+select test.eq('11.15 invited member got the invited role',
+  (select member_role::text from public.library_members
+    where library_id = test.library('Rivera Family Cookbook')
+      and user_id = '33333333-3333-4333-8333-333333333333'), 'member');
+select test.denied('11.16 plain member cannot create invitations',
+  format($q$select public.create_library_invitation(%L)$q$, test.library('Rivera Family Cookbook')));
+
+reset role;
+
+\echo ''
+\echo '================ 12. LIBRARY CREATION (INSERT ... RETURNING) ================'
+
+select set_config('request.jwt.claims',
+  '{"sub":"33333333-3333-4333-8333-333333333333","role":"authenticated"}', false);
+set role authenticated;
+
+select test.affects('12.1 creator can insert a library and read it back (RETURNING)',
+  $q$with ins as (
+       insert into public.libraries (name, created_by)
+       values ('Returning Test', '33333333-3333-4333-8333-333333333333') returning id)
+     select id from ins$q$, 1);
+
+reset role;
+select set_config('request.jwt.claims',
+  '{"sub":"11111111-1111-4111-8111-111111111111","role":"authenticated"}', false);
+set role authenticated;
+
+select test.eq('12.2 a stranger cannot read an unclaimed library',
+  (select count(*) from public.libraries where name = 'Cara''s Cookbook'), 0::bigint);
+
+reset role;
+
+\echo ''
+\echo '================ 13. RECIPE PRESENTATION (themes, photos, feed) ================'
+
+create table if not exists test.r13 (k text primary key, v uuid);
+grant all on test.r13 to public;
+
+insert into test.r13
+select 'pub', gen_random_uuid() union all select 'priv', gen_random_uuid();
+
+insert into public.recipes (id, library_id, created_by, title, is_public, cuisine)
+select v, test.library('Rivera Family Cookbook'), '11111111-1111-4111-8111-111111111111',
+       case k when 'pub' then 'Feed Public' else 'Feed Private' end,
+       k = 'pub', case k when 'pub' then 'italian' end
+  from test.r13;
+
+select set_config('request.jwt.claims',
+  '{"sub":"11111111-1111-4111-8111-111111111111","role":"authenticated"}', false);
+set role authenticated;
+
+select test.denied('13.1 unknown theme is rejected',
+  format($q$update public.recipes set theme = 'neon' where id = %L$q$, (select v from test.r13 where k='pub')));
+select test.denied('13.2 malformed accent colour is rejected',
+  format($q$update public.recipes set accent_color = 'red' where id = %L$q$, (select v from test.r13 where k='pub')));
+select test.denied('13.3 unknown cuisine is rejected',
+  format($q$update public.recipes set cuisine = 'martian' where id = %L$q$, (select v from test.r13 where k='pub')));
+select test.affects('13.4 member can set theme, accent and cuisine',
+  format($q$update public.recipes set theme = 'night', accent_color = '#C0392B', cuisine = 'thai' where id = %L$q$,
+         (select v from test.r13 where k='pub')), 1);
+select test.denied('13.5 background must live at background.<ext>',
+  format($q$update public.recipes set background_image_path = %L where id = %L$q$,
+         test.library('Rivera Family Cookbook') || '/' || (select v from test.r13 where k='pub') || '/cover.jpg',
+         (select v from test.r13 where k='pub')));
+select test.affects('13.6 member can add a photo',
+  format($q$insert into public.recipe_images (recipe_id, library_id, storage_path)
+            values (%L, %L, %L)$q$,
+         (select v from test.r13 where k='pub'), test.library('Rivera Family Cookbook'),
+         test.library('Rivera Family Cookbook') || '/' || (select v from test.r13 where k='pub')
+           || '/photo-' || gen_random_uuid() || '.jpg'), 1);
+select test.denied('13.7 photo path must match the pinned layout',
+  format($q$insert into public.recipe_images (recipe_id, library_id, storage_path)
+            values (%L, %L, 'somewhere/else.jpg')$q$,
+         (select v from test.r13 where k='pub'), test.library('Rivera Family Cookbook')));
+
+reset role;
+insert into public.recipe_images (recipe_id, library_id, storage_path)
+select (select v from test.r13 where k='priv'), test.library('Rivera Family Cookbook'),
+       test.library('Rivera Family Cookbook') || '/' || (select v from test.r13 where k='priv')
+         || '/photo-' || gen_random_uuid() || '.jpg';
+insert into public.recipe_images (recipe_id, library_id, storage_path)
+select (select v from test.r13 where k='pub'), test.library('Rivera Family Cookbook'),
+       test.library('Rivera Family Cookbook') || '/' || (select v from test.r13 where k='pub')
+         || '/photo-' || gen_random_uuid() || '.jpg'
+  from generate_series(1, 12);
+
+select set_config('request.jwt.claims',
+  '{"sub":"11111111-1111-4111-8111-111111111111","role":"authenticated"}', false);
+set role authenticated;
+select test.denied('13.8 a recipe holds at most 12 photos',
+  format($q$insert into public.recipe_images (recipe_id, library_id, storage_path)
+            values (%L, %L, %L)$q$,
+         (select v from test.r13 where k='pub'), test.library('Rivera Family Cookbook'),
+         test.library('Rivera Family Cookbook') || '/' || (select v from test.r13 where k='pub')
+           || '/photo-' || gen_random_uuid() || '.jpg'));
+
+reset role;
+select set_config('request.jwt.claims',
+  '{"sub":"99999999-9999-4999-8999-999999999999","role":"authenticated"}', false);
+set role authenticated;
+select test.eq('13.9 stranger sees photos of a public recipe',
+  (select count(*) > 0 from public.recipe_images where recipe_id = (select v from test.r13 where k='pub')), true);
+select test.eq('13.10 stranger does not see photos of a private recipe',
+  (select count(*) from public.recipe_images where recipe_id = (select v from test.r13 where k='priv')), 0::bigint);
+select test.denied('13.11 stranger cannot add photos to someone else''s recipe',
+  format($q$insert into public.recipe_images (recipe_id, library_id, storage_path)
+            values (%L, %L, %L)$q$,
+         (select v from test.r13 where k='pub'), test.library('Rivera Family Cookbook'),
+         test.library('Rivera Family Cookbook') || '/' || (select v from test.r13 where k='pub')
+           || '/photo-' || gen_random_uuid() || '.jpg'));
+select test.eq('13.12 feed shows the public recipe to a stranger',
+  (select count(*) from public.recipes where is_public and cuisine = 'italian'
+     and id = (select v from test.r13 where k='pub')), 1::bigint);
+select test.eq('13.13 feed hides the private recipe from a stranger',
+  (select count(*) from public.recipes where id = (select v from test.r13 where k='priv')), 0::bigint);
+
+reset role;
+select set_config('request.jwt.claims', '{"role":"anon"}', false);
+set role anon;
+select test.eq('13.14 anon sees photos of a public recipe',
+  (select count(*) > 0 from public.recipe_images where recipe_id = (select v from test.r13 where k='pub')), true);
+select test.eq('13.15 anon sees no photos of a private recipe',
+  (select count(*) from public.recipe_images where recipe_id = (select v from test.r13 where k='priv')), 0::bigint);
+select test.denied('13.16 anon cannot add photos',
+  format($q$insert into public.recipe_images (recipe_id, library_id, storage_path)
+            values (%L, %L, %L)$q$,
+         (select v from test.r13 where k='pub'), test.library('Rivera Family Cookbook'),
+         test.library('Rivera Family Cookbook') || '/' || (select v from test.r13 where k='pub')
+           || '/photo-' || gen_random_uuid() || '.jpg'));
+
+reset role;
+
+\echo ''
 \echo '================ END ================'

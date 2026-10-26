@@ -38,6 +38,56 @@ bool _bool(Object? v, [bool fallback = false]) =>
 DateTime? _date(Object? v) =>
     v is String ? DateTime.tryParse(v)?.toLocal() : null;
 
+double? _dblOrNull(Object? v) {
+  if (v == null) return null;
+  if (v is num) return v.toDouble();
+  if (v is String) return double.tryParse(v);
+  return null;
+}
+
+/// Nutrition facts per serving. Every field is optional because most
+/// people will only know calories and protein.
+class Nutrition {
+  const Nutrition({
+    this.calories,
+    this.proteinG,
+    this.carbsG,
+    this.fatG,
+    this.fiberG,
+    this.sugarG,
+    this.sodiumMg,
+  });
+
+  static const Nutrition empty = Nutrition();
+
+  final int? calories;
+  final double? proteinG;
+  final double? carbsG;
+  final double? fatG;
+  final double? fiberG;
+  final double? sugarG;
+  final int? sodiumMg;
+
+  bool get isEmpty =>
+      calories == null &&
+      proteinG == null &&
+      carbsG == null &&
+      fatG == null &&
+      fiberG == null &&
+      sugarG == null &&
+      sodiumMg == null;
+
+  factory Nutrition.fromJson(Map<String, dynamic> json) => Nutrition(
+        calories: _intOrNull(json['calories']),
+        proteinG: _dblOrNull(json['protein_g']),
+        carbsG: _dblOrNull(json['carbs_g']),
+        fatG: _dblOrNull(json['fat_g']),
+        fiberG: _dblOrNull(json['fiber_g']),
+        sugarG: _dblOrNull(json['sugar_g']),
+        sodiumMg: _intOrNull(json['sodium_mg']),
+      );
+}
+
 class Profile {
   const Profile({required this.id, required this.displayName, this.avatarPath});
 
@@ -231,8 +281,14 @@ class Recipe {
     this.accentColor,
     this.backgroundImagePath,
     this.images = const <RecipeImage>[],
+    this.diets = const <Diet>[],
+    this.nutrition = Nutrition.empty,
   });
 
+  final List<Diet> diets;
+
+  /// Per serving.
+  final Nutrition nutrition;
   final Cuisine? cuisine;
   final RecipeTheme theme;
 
@@ -330,6 +386,13 @@ class Recipe {
       theme: RecipeTheme.fromWire(_strOrNull(json['theme'])),
       accentColor: _strOrNull(json['accent_color']),
       backgroundImagePath: _strOrNull(json['background_image_path']),
+      diets: json['diets'] is List
+          ? (json['diets'] as List)
+              .map<Diet?>((Object? d) => Diet.fromWire(d is String ? d : null))
+              .whereType<Diet>()
+              .toList(growable: false)
+          : const <Diet>[],
+      nutrition: Nutrition.fromJson(json),
       images: (listOf<RecipeImage>(json['recipe_images'], RecipeImage.fromJson)
             ..sort((RecipeImage a, RecipeImage b) =>
                 a.sortOrder.compareTo(b.sortOrder)))

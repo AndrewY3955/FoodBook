@@ -8,6 +8,7 @@ class DiscoverFilter {
   const DiscoverFilter({
     this.cuisine,
     this.mealType,
+    this.diets = const <Diet>[],
     this.query = '',
     this.limit = pageSize,
   });
@@ -16,15 +17,21 @@ class DiscoverFilter {
 
   final Cuisine? cuisine;
   final MealType? mealType;
+  final List<Diet> diets;
   final String query;
   final int limit;
 
-  bool get isActive => cuisine != null || mealType != null || query.isNotEmpty;
+  bool get isActive =>
+      cuisine != null ||
+      mealType != null ||
+      diets.isNotEmpty ||
+      query.isNotEmpty;
 
   /// Changing a category or the query starts again from the first page.
   DiscoverFilter copyWith({
     Cuisine? cuisine,
     MealType? mealType,
+    List<Diet>? diets,
     String? query,
     int? limit,
     bool clearCuisine = false,
@@ -33,6 +40,7 @@ class DiscoverFilter {
       DiscoverFilter(
         cuisine: clearCuisine ? null : (cuisine ?? this.cuisine),
         mealType: clearMealType ? null : (mealType ?? this.mealType),
+        diets: diets ?? this.diets,
         query: query ?? this.query,
         limit: limit ?? this.limit,
       );
@@ -45,18 +53,32 @@ class DiscoverController extends Notifier<DiscoverFilter> {
   void setCuisine(Cuisine? value) => state = DiscoverFilter(
         cuisine: value,
         mealType: state.mealType,
+        diets: state.diets,
         query: state.query,
       );
 
   void setMealType(MealType? value) => state = DiscoverFilter(
         cuisine: state.cuisine,
         mealType: value,
+        diets: state.diets,
         query: state.query,
       );
+
+  void toggleDiet(Diet diet) {
+    final List<Diet> next = List<Diet>.of(state.diets);
+    next.contains(diet) ? next.remove(diet) : next.add(diet);
+    state = DiscoverFilter(
+      cuisine: state.cuisine,
+      mealType: state.mealType,
+      diets: next,
+      query: state.query,
+    );
+  }
 
   void setQuery(String value) => state = DiscoverFilter(
         cuisine: state.cuisine,
         mealType: state.mealType,
+        diets: state.diets,
         query: value,
       );
 
@@ -80,6 +102,7 @@ final FutureProvider<List<Recipe>> discoverFeedProvider =
   return ref.watch(recipeRepositoryProvider).feed(
         cuisine: filter.cuisine,
         mealType: filter.mealType,
+        diets: filter.diets,
         query: filter.query,
         limit: filter.limit,
       );

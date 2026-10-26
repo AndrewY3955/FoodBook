@@ -18,6 +18,14 @@ FILES=(
   "migrations/0003_functions_triggers.sql"
   "migrations/0004_rls_policies.sql"
   "migrations/0005_storage_policies.sql"
+  "migrations/0007_rename_to_libraries.sql"
+  "migrations/0008_rebuild_function_bodies.sql"
+  "migrations/0009_library_invitations.sql"
+  "migrations/0010_library_creator_can_read_unclaimed.sql"
+  "migrations/0011_library_members_profile_fk.sql"
+  "migrations/0012_recipe_presentation.sql"
+  "migrations/0013_fork_everything_account_delete.sql"
+  "migrations/0014_diets_nutrition.sql"
   "seed.sql"
 )
 

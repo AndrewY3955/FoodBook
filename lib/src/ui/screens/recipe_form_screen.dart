@@ -16,6 +16,7 @@ import '../../state/recipe_controllers.dart';
 import '../../state/discover_controller.dart';
 import '../../data/repositories/storage_repository.dart';
 import '../widgets/recipe_appearance_section.dart';
+import '../widgets/diet_nutrition_section.dart';
 import '../responsive/adaptive_scaffold.dart';
 import '../responsive/breakpoints.dart';
 
@@ -98,9 +99,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
           await attempt(
             'Background',
             () => storage.uploadBackground(
-                libraryId: libraryId,
-                recipeId: id,
-                bytes: _pendingBackground!),
+                libraryId: libraryId, recipeId: id, bytes: _pendingBackground!),
           );
         }
         final int existingPhotos = widget.recipeId == null
@@ -410,6 +409,8 @@ class _BasicsPane extends ConsumerWidget {
           ],
           onChanged: controller.setCuisine,
         ),
+        const SizedBox(height: 4),
+        const DietNutritionSection(),
         const SizedBox(height: 8),
         Row(
           children: <Widget>[

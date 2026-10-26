@@ -1,5 +1,5 @@
 ================ 1. POSITIVE CONTROLS (Ana, Rivera) ================
-PASS  1.1  Ana sees her own kitchen
+PASS  1.1  Ana sees her own library
 PASS  1.2  Ana sees both Rivera members
 PASS  1.3  Ana sees 3 Rivera recipes
 PASS  1.4  Ana sees the full Rivera pantry
@@ -7,7 +7,7 @@ PASS  1.5  Ana sees the Rivera shopping list
 PASS  1.6  Ana sees 4 meal plan entries
 PASS  1.7  Ana sees Rivera tags only
 PASS  1.8  Ana can read the global ingredient catalog
-PASS  1.9  Ana sees Ben's profile (shared kitchen)
+PASS  1.9  Ana sees Ben's profile (shared library)
 ================ 2. NEGATIVE CONTROLS (cross-tenant) ================
 PASS  2.1  Cara sees ZERO Rivera pantry rows
 PASS  2.2  Cara sees ZERO Rivera shopping rows
@@ -25,11 +25,11 @@ PASS  2.13 INSERT membership for self into Rivera   blocked [42501]
 PASS  2.14 UPDATE of Rivera pantry touches nothing   rows=0
 PASS  2.15 DELETE of Rivera recipes touches nothing   rows=0
 PASS  2.16 UPDATE of public recipe by non-member touches nothing   rows=0
-PASS  2.19 Cara cannot claim an empty kitchen she did not create   blocked [42501]
-PASS  2.20 Ana CAN claim the empty kitchen she created   rows=1
-PASS  2.21 Ana cannot claim a kitchen that already has members   blocked [42501]
+PASS  2.19 Cara cannot claim an empty library she did not create   blocked [42501]
+PASS  2.20 Ana CAN claim the empty library she created   rows=1
+PASS  2.21 Ana cannot claim a library that already has members   blocked [42501]
 PASS  2.22 bootstrap refuses any role other than owner   blocked [42501]
-PASS  2.17 Ana cannot move her recipe into Cara's kitchen   blocked [42501]
+PASS  2.17 Ana cannot move her recipe into Cara's library   blocked [42501]
 PASS  2.18 Ana cannot create a recipe attributed to Cara   blocked [42501]
 ================ 3. GATE-BREAK CONTROL ================
 PASS  3.1  WITH GATE REMOVED Cara reaches Rivera pantry (breach is observable)
@@ -40,17 +40,17 @@ PASS  4.2  anon sees zero pantry rows
 PASS  4.3  anon sees zero shopping rows
 PASS  4.4  anon sees zero meal plan rows
 PASS  4.5  anon sees zero profiles
-PASS  4.6  anon sees zero kitchens
+PASS  4.6  anon sees zero libraries
 PASS  4.7  anon sees zero tags
 PASS  4.8  anon CAN read the global ingredient catalog
-PASS  4.9  anon sees zero kitchen-private ingredients
+PASS  4.9  anon sees zero library-private ingredients
 PASS  4.10 anon cannot insert a recipe   blocked [42501]
 PASS  4.11 anon cannot insert an ingredient   blocked [42501]
 ================ 5. DENORMALISATION INTEGRITY ================
 PASS  5.1  Cara cannot attach a step to a Rivera recipe   blocked [42501]
 PASS  5.2  Cara cannot attach an ingredient to a Rivera recipe   blocked [42501]
 PASS  5.3  Ana cannot plan a meal against Cara's private recipe   blocked [23514]
-PASS  5.4  Ana cannot use a private ingredient from another kitchen   blocked [42501]
+PASS  5.4  Ana cannot use a private ingredient from another library   blocked [42501]
 ================ 6. URL / XSS BOUNDARY ================
 PASS  6.1  javascript: URL rejected   blocked [23514]
 PASS  6.2  data: URL rejected   blocked [23514]
@@ -61,7 +61,7 @@ PASS  6.6  whitespace-smuggled URL rejected   blocked [23514]
 PASS  6.7  credentials-in-authority URL rejected   blocked [23514]
 PASS  6.8  legitimate https URL accepted   rows=1
 PASS  6.9  cover path outside the pinned layout rejected   blocked [23514]
-PASS  6.10 cover path in another kitchen's prefix is still a valid SHAPE   blocked [23514]
+PASS  6.10 cover path in another library's prefix is still a valid SHAPE   blocked [23514]
 ================ 7. STORAGE OBJECT POLICIES ================
 PASS  7.0  Ana sees both Rivera cover objects
 PASS  7.1  Ana can upload a cover under Rivera's prefix   rows=1
@@ -75,19 +75,19 @@ PASS  7.7  anon sees only the public cover
 PASS  8.1  Shakshuka pantry match = 83% (5 of 6 required)
 PASS  8.2  Tray bake pantry match = 80% (4 of 5 required)
 PASS  8.3  optional ingredients excluded from the denominator
-PASS  8.4  pantry_match never leaks another kitchen's recipe
+PASS  8.4  pantry_match never leaks another library's recipe
 PASS  8.5  pantry_match honours the meal_type filter
 PASS  8.6  pantry_match honours the minimum-percentage floor
 PASS  8.7  anonymous cook-time average over 4 logs
-PASS  8.8  Cara can fork the PUBLIC recipe into her own kitchen
+PASS  8.8  Cara can fork the PUBLIC recipe into her own library
 PASS  8.9  the fork carried its steps across
 PASS  8.10 the fork is private by default
 PASS  8.11 the fork carries NO cover image (text-only)
 PASS  8.12 Cara cannot fork a PRIVATE Rivera recipe   blocked [42501]
-PASS  8.13 Cara cannot fork INTO a kitchen she does not belong to   blocked [42501]
+PASS  8.13 Cara cannot fork INTO a library she does not belong to   blocked [42501]
 PASS  8.14 aggregation touches the 5 ingredients the pantry lacks
 PASS  8.15 quantities scaled 2 -> 4 servings (tomatoes 4 -> 8)
-PASS  8.16 aggregation refuses a kitchen the caller is not in   blocked [42501]
+PASS  8.16 aggregation refuses a library the caller is not in   blocked [42501]
 ================ 9. COVERAGE AUDIT ================
 PASS  9.1  every public table has RLS enabled
 PASS  9.2  every public table forces RLS for its owner too
@@ -103,4 +103,41 @@ PASS  10.4 injected OR TRUE reaches no foreign private recipe
 PASS  10.5 injected OR TRUE reaches no foreign recipe steps
 PASS  10.6 injected OR TRUE cannot enumerate profiles
 PASS  10.7 smuggled % wildcard stays inside the tenant
+================ 11. INVITATIONS ================
+PASS  11.1 admin can create an invitation
+PASS  11.2 only the hash is stored (token column does not exist)
+PASS  11.3 direct INSERT into invitations is refused   blocked [42501]
+PASS  11.4 owner role cannot be invited   blocked [22023]
+PASS  11.5 excessive expiry is refused   blocked [22023]
+PASS  11.6 token_hash is not readable   blocked [42501]
+PASS  11.7 non-member cannot create an invitation   blocked [42501]
+PASS  11.8 non-member cannot list invitations
+PASS  11.9 garbage token is refused   blocked [42501]
+PASS  11.10 revoked token is refused   blocked [42501]
+PASS  11.11 email-bound token refused for a different email   blocked [42501]
+PASS  11.12 anon cannot accept an invitation   blocked [42501]
+PASS  11.13 valid token makes Cara a member
+PASS  11.14 token is single-use   blocked [42501]
+PASS  11.15 invited member got the invited role
+PASS  11.16 plain member cannot create invitations   blocked [42501]
+================ 12. LIBRARY CREATION (INSERT ... RETURNING) ================
+PASS  12.1 creator can insert a library and read it back (RETURNING)   rows=1
+PASS  12.2 a stranger cannot read an unclaimed library
+================ 13. RECIPE PRESENTATION (themes, photos, feed) ================
+PASS  13.1 unknown theme is rejected   blocked [23514]
+PASS  13.2 malformed accent colour is rejected   blocked [23514]
+PASS  13.3 unknown cuisine is rejected   blocked [23514]
+PASS  13.4 member can set theme, accent and cuisine   rows=1
+PASS  13.5 background must live at background.<ext>   blocked [23514]
+PASS  13.6 member can add a photo   rows=1
+PASS  13.7 photo path must match the pinned layout   blocked [23514]
+PASS  13.8 a recipe holds at most 12 photos   blocked [23514]
+PASS  13.9 stranger sees photos of a public recipe
+PASS  13.10 stranger does not see photos of a private recipe
+PASS  13.11 stranger cannot add photos to someone else's recipe   blocked [23514]
+PASS  13.12 feed shows the public recipe to a stranger
+PASS  13.13 feed hides the private recipe from a stranger
+PASS  13.14 anon sees photos of a public recipe
+PASS  13.15 anon sees no photos of a private recipe
+PASS  13.16 anon cannot add photos   blocked [42501]
 ================ END ================

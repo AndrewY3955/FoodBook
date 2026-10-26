@@ -14,6 +14,7 @@ import '../../state/recipe_controllers.dart';
 import '../../state/shopping_controller.dart';
 import '../responsive/adaptive_scaffold.dart';
 import '../responsive/breakpoints.dart';
+import '../widgets/diet_nutrition_section.dart' show NutritionFactsPanel;
 import '../widgets/recipe_appearance_section.dart' show parseAccent;
 import '../widgets/recipe_card.dart';
 import 'cooking_mode_screen.dart';
@@ -121,6 +122,21 @@ class _Loaded extends ConsumerWidget {
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
                     child: _Gallery(images: recipe.images),
+                  ),
+                ),
+              ),
+            if (!recipe.nutrition.isEmpty)
+              SliverToBoxAdapter(
+                child: ContentWidth(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: NutritionFactsPanel(
+                        nutrition: recipe.nutrition,
+                        servings: recipe.baseServings,
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -375,6 +391,11 @@ class _Header extends ConsumerWidget {
             Chip(label: Text(recipe.mealType.label)),
             if (recipe.season != Season.allYear)
               Chip(label: Text(recipe.season.label)),
+            for (final Diet d in recipe.diets)
+              Chip(
+                avatar: const Icon(Icons.spa_outlined, size: 16),
+                label: Text(d.label),
+              ),
             for (final String tag in recipe.tags) Chip(label: Text(tag)),
             if (recipe.importSource != ImportSource.manual)
               Chip(

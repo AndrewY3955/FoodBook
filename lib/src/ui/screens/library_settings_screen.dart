@@ -53,8 +53,8 @@ class LibrarySettingsScreen extends ConsumerWidget {
                             label: const Text('Rename library'),
                           ),
                           OutlinedButton.icon(
-                            onPressed: () =>
-                                showCreateInvitationDialog(context, ref, library),
+                            onPressed: () => showCreateInvitationDialog(
+                                context, ref, library),
                             icon: const Icon(Icons.person_add_alt_1_outlined),
                             label: const Text('Invite someone'),
                           ),

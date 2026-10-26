@@ -8,6 +8,7 @@ import '../../state/recipe_controllers.dart';
 import '../responsive/adaptive_scaffold.dart';
 import '../responsive/breakpoints.dart';
 import '../widgets/category_slider.dart';
+import '../widgets/diet_chips.dart';
 import '../widgets/recipe_card.dart';
 import 'import_screen.dart';
 import 'recipe_detail_screen.dart';
@@ -145,6 +146,7 @@ class _FilterBar extends ConsumerStatefulWidget {
 
 class _FilterBarState extends ConsumerState<_FilterBar> {
   final TextEditingController _search = TextEditingController();
+  bool _expanded = false;
 
   @override
   void dispose() {
@@ -155,6 +157,10 @@ class _FilterBarState extends ConsumerState<_FilterBar> {
   @override
   Widget build(BuildContext context) {
     final RecipeFilter filter = ref.watch(recipeFilterProvider);
+    final int extraActive = (filter.cuisine != null ? 1 : 0) +
+        filter.diets.length +
+        (filter.season != null ? 1 : 0) +
+        (filter.tag != null ? 1 : 0);
     final RecipeFilterController controller =
         ref.read(recipeFilterProvider.notifier);
     final List<String> tags = ref.watch(libraryTagsProvider);
@@ -197,71 +203,96 @@ class _FilterBarState extends ConsumerState<_FilterBar> {
                   ),
               ],
             ),
-            CategorySlider<Cuisine>(
-              semanticsLabel: 'Cuisine',
-              selected: filter.cuisine,
-              onChanged: controller.setCuisine,
-              options: <CategoryOption<Cuisine>>[
-                for (final Cuisine c in Cuisine.values)
-                  CategoryOption<Cuisine>(
-                    value: c,
-                    label: c.label,
-                    emoji: c.emoji,
+            Row(
+              children: <Widget>[
+                TextButton.icon(
+                  onPressed: () => setState(() => _expanded = !_expanded),
+                  icon: Icon(
+                    _expanded ? Icons.expand_less : Icons.tune,
+                    size: 18,
+                  ),
+                  label: Text(
+                    _expanded
+                        ? 'Fewer filters'
+                        : extraActive > 0
+                            ? 'More filters ($extraActive)'
+                            : 'More filters',
+                  ),
+                ),
+                if (filter.isActive)
+                  TextButton.icon(
+                    onPressed: () {
+                      _search.clear();
+                      controller.clear();
+                    },
+                    icon: const Icon(Icons.clear_all, size: 18),
+                    label: const Text('Clear'),
                   ),
               ],
             ),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: <Widget>[
-                  for (final Season season in Season.values)
-                    if (season != Season.allYear)
-                      Padding(
-                        padding: const EdgeInsets.only(right: 6),
-                        child: FilterChip(
-                          label: Text(season.label),
-                          selected: filter.season == season,
-                          onSelected: (bool on) =>
-                              controller.setSeason(on ? season : null),
-                        ),
-                      ),
-                  const SizedBox(width: 6),
-                  ActionChip(
-                    avatar: const Icon(Icons.eco_outlined, size: 16),
-                    label: const Text('In season now'),
-                    onPressed: () =>
-                        controller.applyCurrentSeason(DateTime.now()),
-                  ),
-                  if (tags.isNotEmpty) ...<Widget>[
-                    const SizedBox(width: 6),
-                    const _Separator(),
-                    const SizedBox(width: 6),
-                    for (final String tag in tags)
-                      Padding(
-                        padding: const EdgeInsets.only(right: 6),
-                        child: FilterChip(
-                          label: Text(tag),
-                          selected:
-                              filter.tag?.toLowerCase() == tag.toLowerCase(),
-                          onSelected: (bool on) =>
-                              controller.setTag(on ? tag : null),
-                        ),
-                      ),
-                  ],
-                  if (filter.isActive) ...<Widget>[
-                    const SizedBox(width: 6),
-                    TextButton.icon(
-                      onPressed: () {
-                        _search.clear();
-                        controller.clear();
-                      },
-                      icon: const Icon(Icons.clear_all, size: 18),
-                      label: const Text('Clear'),
+            if (_expanded) ...<Widget>[
+              CategorySlider<Cuisine>(
+                semanticsLabel: 'Cuisine',
+                selected: filter.cuisine,
+                onChanged: controller.setCuisine,
+                options: <CategoryOption<Cuisine>>[
+                  for (final Cuisine c in Cuisine.values)
+                    CategoryOption<Cuisine>(
+                      value: c,
+                      label: c.label,
+                      emoji: c.emoji,
                     ),
-                  ],
                 ],
               ),
-            ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: DietChips(
+                  selected: filter.diets,
+                  onToggle: controller.toggleDiet,
+                ),
+              ),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: <Widget>[
+                    for (final Season season in Season.values)
+                      if (season != Season.allYear)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 6),
+                          child: FilterChip(
+                            label: Text(season.label),
+                            selected: filter.season == season,
+                            onSelected: (bool on) =>
+                                controller.setSeason(on ? season : null),
+                          ),
+                        ),
+                    const SizedBox(width: 6),
+                    ActionChip(
+                      avatar: const Icon(Icons.eco_outlined, size: 16),
+                      label: const Text('In season now'),
+                      onPressed: () =>
+                          controller.applyCurrentSeason(DateTime.now()),
+                    ),
+                    if (tags.isNotEmpty) ...<Widget>[
+                      const SizedBox(width: 6),
+                      const _Separator(),
+                      const SizedBox(width: 6),
+                      for (final String tag in tags)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 6),
+                          child: FilterChip(
+                            label: Text(tag),
+                            selected:
+                                filter.tag?.toLowerCase() == tag.toLowerCase(),
+                            onSelected: (bool on) =>
+                                controller.setTag(on ? tag : null),
+                          ),
+                        ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
       ),

@@ -22,8 +22,7 @@ final FutureProvider<List<Library>> myLibrariesProvider =
 class ActiveLibraryController extends Notifier<String?> {
   @override
   String? build() {
-    final AsyncValue<List<Library>> libraries =
-        ref.watch(myLibrariesProvider);
+    final AsyncValue<List<Library>> libraries = ref.watch(myLibrariesProvider);
 
     return libraries.maybeWhen(
       data: (List<Library> list) {

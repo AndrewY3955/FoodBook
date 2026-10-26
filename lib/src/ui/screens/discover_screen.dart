@@ -7,6 +7,7 @@ import '../../state/discover_controller.dart';
 import '../responsive/adaptive_scaffold.dart';
 import '../responsive/breakpoints.dart';
 import '../widgets/category_slider.dart';
+import '../widgets/diet_chips.dart';
 import '../widgets/recipe_card.dart';
 import 'recipe_detail_screen.dart';
 
@@ -20,6 +21,8 @@ class DiscoverScreen extends ConsumerStatefulWidget {
 
 class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
   final TextEditingController _search = TextEditingController();
+  bool _showCuisine = false;
+  bool _showDiet = false;
 
   @override
   void dispose() {
@@ -77,19 +80,64 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
                           ),
                       ],
                     ),
-                    CategorySlider<Cuisine>(
-                      semanticsLabel: 'Cuisine',
-                      selected: filter.cuisine,
-                      onChanged: controller.setCuisine,
-                      options: <CategoryOption<Cuisine>>[
-                        for (final Cuisine c in Cuisine.values)
-                          CategoryOption<Cuisine>(
-                            value: c,
-                            label: c.label,
-                            emoji: c.emoji,
+                    Wrap(
+                      children: <Widget>[
+                        TextButton.icon(
+                          onPressed: () =>
+                              setState(() => _showCuisine = !_showCuisine),
+                          icon: Icon(
+                            _showCuisine ? Icons.expand_less : Icons.public,
+                            size: 18,
                           ),
+                          label: Text(
+                            _showCuisine
+                                ? 'Hide cuisines'
+                                : filter.cuisine != null
+                                    ? 'Cuisine: ${filter.cuisine!.label}'
+                                    : 'Browse by cuisine',
+                          ),
+                        ),
+                        TextButton.icon(
+                          onPressed: () =>
+                              setState(() => _showDiet = !_showDiet),
+                          icon: Icon(
+                            _showDiet
+                                ? Icons.expand_less
+                                : Icons.restaurant_menu,
+                            size: 18,
+                          ),
+                          label: Text(
+                            _showDiet
+                                ? 'Hide diets'
+                                : filter.diets.isNotEmpty
+                                    ? 'Diet (${filter.diets.length})'
+                                    : 'Diet & nutrition',
+                          ),
+                        ),
                       ],
                     ),
+                    if (_showDiet)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: DietChips(
+                          selected: filter.diets,
+                          onToggle: controller.toggleDiet,
+                        ),
+                      ),
+                    if (_showCuisine)
+                      CategorySlider<Cuisine>(
+                        semanticsLabel: 'Cuisine',
+                        selected: filter.cuisine,
+                        onChanged: controller.setCuisine,
+                        options: <CategoryOption<Cuisine>>[
+                          for (final Cuisine c in Cuisine.values)
+                            CategoryOption<Cuisine>(
+                              value: c,
+                              label: c.label,
+                              emoji: c.emoji,
+                            ),
+                        ],
+                      ),
                   ],
                 ),
               ),
@@ -156,7 +204,8 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
 
                   return ContentWidth(
                     child: RefreshIndicator(
-                      onRefresh: () async => ref.invalidate(discoverFeedProvider),
+                      onRefresh: () async =>
+                          ref.invalidate(discoverFeedProvider),
                       child: CustomScrollView(
                         slivers: <Widget>[
                           SliverPadding(

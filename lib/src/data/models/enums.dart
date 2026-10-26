@@ -70,6 +70,39 @@ enum Cuisine {
   }
 }
 
+/// Dietary labels, mirrored by recipes_diets_check in migration 0014.
+/// Declared in the order the picker shows them: the most searched-for
+/// options first.
+enum Diet {
+  highProtein('high_protein', 'High protein'),
+  vegetarian('vegetarian', 'Vegetarian'),
+  vegan('vegan', 'Vegan'),
+  glutenFree('gluten_free', 'Gluten free'),
+  dairyFree('dairy_free', 'Dairy free'),
+  lowCarb('low_carb', 'Low carb'),
+  keto('keto', 'Keto'),
+  pescatarian('pescatarian', 'Pescatarian'),
+  nutFree('nut_free', 'Nut free'),
+  eggFree('egg_free', 'Egg free'),
+  paleo('paleo', 'Paleo'),
+  lowFat('low_fat', 'Low fat'),
+  lowSodium('low_sodium', 'Low sodium'),
+  highFiber('high_fiber', 'High fiber'),
+  halal('halal', 'Halal'),
+  kosher('kosher', 'Kosher');
+
+  const Diet(this.wire, this.label);
+  final String wire;
+  final String label;
+
+  static Diet? fromWire(String? value) {
+    for (final Diet d in Diet.values) {
+      if (d.wire == value) return d;
+    }
+    return null;
+  }
+}
+
 extension MealTypeEmoji on MealType {
   String get emoji => switch (this) {
         MealType.breakfast => '🍳',

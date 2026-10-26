@@ -17,10 +17,10 @@ generates the platform folders, and runs static analysis. Re-running it is safe.
 
 | Folder | What it is | State |
 |---|---|---|
-| `lib/` | The Flutter app, 43 files | **Never compiled.** 17 files have cleared `dart analyze`; the other 26 have not been analysed by anyone |
-| `test/` | 2 Dart unit test files | **Never executed** |
-| `supabase/migrations/` | 6 SQL migrations | Verified against real PostgreSQL 16.15 |
-| `supabase/tests/` | 95-assertion RLS suite | Verified: 95 pass, 0 fail, including two deliberate gate-breaks |
+| `lib/` | The Flutter app, 43 Dart files | `flutter analyze` passes; web production build passes |
+| `test/` | 3 Dart unit/widget test files | 60 tests pass |
+| `supabase/migrations/` | 9 SQL migrations (0006 optional, in supabase/optional/) | Covered by the test rebuild |
+| `supabase/tests/` | RLS, engine and invitation suite (113 assertions) | Run with run_tests_docker.ps1 |
 | `supabase/functions/` | The import Edge Function | Guards verified: 55 pass, 0 fail |
 | `tooling/` | URL corpus cross-check | 26/26 both sides |
 
@@ -30,9 +30,9 @@ Read **VERIFICATION.md** before trusting any of it. It grades every claim.
 
 ## What is deliberately not here
 
-`android/`, `web/`, `windows/` — Flutter generates these; `setup.ps1` calls
-`flutter create` to produce them. Committing generated scaffolding is how
-projects end up wedged on an old Flutter version.
+`android/`, `web/`, `windows/` — Flutter platform scaffolding used by this
+workspace. Keep the platform source/configuration files under version control;
+ignore only generated build output.
 
 `ios/` — building it requires macOS. Your iPhone route is the web build,
 installed from Safari via Share → Add to Home Screen. It behaves like an
@@ -42,8 +42,8 @@ installed app: own icon, no browser chrome, no App Store, no yearly fee.
 
 ## The order of operations
 
-1. **`.\setup.ps1`** — get the project analysing. Expect errors the first time;
-   send them back.
+1. **`.\setup.ps1`** — resolve dependencies, analyze the app, and run its unit
+   tests.
 2. **Create a Supabase project**, then apply `supabase/migrations/` in numbered
    order and run `supabase/seed.sql`. Do not apply `0006` until you have read
    its header — it is a deliberate open decision, not an oversight.
@@ -53,8 +53,9 @@ installed app: own icon, no browser chrome, no App Store, no yearly fee.
    and put it behind a password so it is not publicly reachable.
 6. **Add to Home Screen** on the iPhone.
 
-Steps 2 through 6 are not written yet as a runbook. Ask for it when step 1 is
-clean.
+Steps 2 through 6 still need a deployment runbook. The database test harness
+also needs updating to cover migrations 0007 and 0008 before it can verify the
+current schema.
 
 ---
 

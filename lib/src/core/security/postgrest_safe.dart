@@ -57,10 +57,8 @@ class PostgrestSafe {
   /// `.or()` grammar, so `St. John's` can be searched as typed. The LIKE
   /// metacharacters (`%`, `_`, `\`) are escaped by [escapeLike] instead.
   static String likeTerm(String value, {int maxLength = 60}) {
-    final String stripped = value
-        .replaceAll('*', ' ')
-        .replaceAll(RegExp(r'\s{2,}'), ' ')
-        .trim();
+    final String stripped =
+        value.replaceAll('*', ' ').replaceAll(RegExp(r'\s{2,}'), ' ').trim();
     return stripped.length <= maxLength
         ? stripped
         : stripped.substring(0, maxLength).trim();

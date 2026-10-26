@@ -36,6 +36,12 @@ class RecipeFilterController extends Notifier<RecipeFilter> {
   void setIncludePublic(bool value) =>
       state = state.copyWith(includePublic: value);
 
+  void toggleDiet(Diet diet) {
+    final List<Diet> next = List<Diet>.of(state.diets);
+    next.contains(diet) ? next.remove(diet) : next.add(diet);
+    state = state.copyWith(diets: next);
+  }
+
   void setCuisine(Cuisine? value) {
     state = value == null
         ? state.copyWith(clearCuisine: true)
@@ -159,6 +165,8 @@ class RecipeFormController extends Notifier<RecipeDraft> {
       cuisine: recipe.cuisine,
       theme: recipe.theme,
       accentColor: recipe.accentColor,
+      diets: List<Diet>.of(recipe.diets),
+      nutrition: recipe.nutrition,
       ingredients: recipe.sortedIngredients
           .map((RecipeIngredient i) => DraftIngredient(
                 ingredientId: i.ingredientId,
@@ -201,6 +209,18 @@ class RecipeFormController extends Notifier<RecipeDraft> {
 
   void setCuisine(Cuisine? value) {
     state.cuisine = value;
+    _touch();
+  }
+
+  void toggleDiet(Diet diet) {
+    state.diets.contains(diet)
+        ? state.diets.remove(diet)
+        : state.diets.add(diet);
+    _touch();
+  }
+
+  void setNutrition(Nutrition value) {
+    state.nutrition = value;
     _touch();
   }
 
