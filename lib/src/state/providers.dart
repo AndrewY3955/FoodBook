@@ -72,6 +72,3 @@ final Provider<Session?> sessionProvider = Provider<Session?>((Ref ref) {
 
 final Provider<bool> isSignedInProvider =
     Provider<bool>((Ref ref) => ref.watch(sessionProvider) != null);
-
-final Provider<String?> currentUserIdProvider =
-    Provider<String?>((Ref ref) => ref.watch(sessionProvider)?.user.id);

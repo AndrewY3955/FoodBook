@@ -64,17 +64,6 @@ final FutureProvider<List<PantryMatch>> pantryMatchProvider =
       );
 });
 
-/// Everything cookable with nothing missing.
-final Provider<List<PantryMatch>> cookableNowProvider =
-    Provider<List<PantryMatch>>((Ref ref) {
-  return ref.watch(pantryMatchProvider).maybeWhen(
-        data: (List<PantryMatch> matches) => matches
-            .where((PantryMatch m) => m.isCookable)
-            .toList(growable: false),
-        orElse: () => const <PantryMatch>[],
-      );
-});
-
 class PantryController extends Notifier<void> {
   @override
   void build() {}

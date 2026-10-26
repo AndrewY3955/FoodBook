@@ -62,10 +62,6 @@ class LayoutScope extends InheritedWidget {
   bool get isTablet => formFactor == FormFactor.tablet;
   bool get isDesktop => formFactor == FormFactor.desktop;
 
-  /// True where a pointer is the primary input and hover/right-click
-  /// affordances make sense.
-  bool get isPointerFirst => formFactor == FormFactor.desktop;
-
   static LayoutScope of(BuildContext context) {
     final LayoutScope? scope =
         context.dependOnInheritedWidgetOfExactType<LayoutScope>();

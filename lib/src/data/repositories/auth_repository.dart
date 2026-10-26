@@ -18,7 +18,6 @@ class AuthRepository {
 
   Session? get currentSession => _auth.currentSession;
   User? get currentUser => _auth.currentUser;
-  String? get currentUserId => _auth.currentUser?.id;
 
   Stream<AuthState> get onAuthStateChange => _auth.onAuthStateChange;
 

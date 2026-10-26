@@ -33,9 +33,6 @@ class RecipeFilterController extends Notifier<RecipeFilter> {
 
   void setQuery(String value) => state = state.copyWith(query: value);
 
-  void setIncludePublic(bool value) =>
-      state = state.copyWith(includePublic: value);
-
   void toggleDiet(Diet diet) {
     final List<Diet> next = List<Diet>.of(state.diets);
     next.contains(diet) ? next.remove(diet) : next.add(diet);
@@ -296,14 +293,6 @@ class RecipeFormController extends Notifier<RecipeDraft> {
     _touch();
   }
 
-  void reorderIngredients(int oldIndex, int newIndex) {
-    if (oldIndex < 0 || oldIndex >= state.ingredients.length) return;
-    final int target = newIndex > oldIndex ? newIndex - 1 : newIndex;
-    final DraftIngredient moved = state.ingredients.removeAt(oldIndex);
-    state.ingredients.insert(target.clamp(0, state.ingredients.length), moved);
-    _touch();
-  }
-
   void addStep([String text = '']) {
     state.steps.add(DraftStep(instruction: text));
     _touch();
@@ -320,23 +309,6 @@ class RecipeFormController extends Notifier<RecipeDraft> {
   void removeStep(int index) {
     if (index < 0 || index >= state.steps.length) return;
     state.steps.removeAt(index);
-    _touch();
-  }
-
-  void reorderSteps(int oldIndex, int newIndex) {
-    if (oldIndex < 0 || oldIndex >= state.steps.length) return;
-    final int target = newIndex > oldIndex ? newIndex - 1 : newIndex;
-    final DraftStep moved = state.steps.removeAt(oldIndex);
-    state.steps.insert(target.clamp(0, state.steps.length), moved);
-    _touch();
-  }
-
-  void toggleTag(String tag) {
-    if (state.tags.contains(tag)) {
-      state.tags.remove(tag);
-    } else {
-      state.tags.add(tag);
-    }
     _touch();
   }
 

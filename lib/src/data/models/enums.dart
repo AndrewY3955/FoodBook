@@ -236,11 +236,4 @@ enum ImportSource {
         (ImportSource e) => e.wire == value,
         orElse: () => ImportSource.manual,
       );
-
-  static ImportSource forHost(String host) {
-    final String h = host.toLowerCase();
-    if (h.contains('instagram')) return ImportSource.instagram;
-    if (h.contains('tiktok')) return ImportSource.tiktok;
-    return ImportSource.web;
-  }
 }

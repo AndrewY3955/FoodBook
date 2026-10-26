@@ -282,17 +282,4 @@ class StorageRepository {
       return null;
     }
   }
-
-  Future<void> removeCover({
-    required String recipeId,
-    required String path,
-  }) async {
-    try {
-      await _bucket.remove(<String>[path]);
-      await _client.from('recipes').update(
-          <String, dynamic>{'cover_image_path': null}).eq('id', recipeId);
-    } catch (error) {
-      throw Failure.from(error);
-    }
-  }
 }
