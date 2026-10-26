@@ -1,0 +1,42 @@
+name: cookistrybook
+description: Recipe box, pantry matcher and meal planner. One codebase, phone to desktop.
+publish_to: none
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+  flutter: ">=3.22.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State. Riverpod is chosen over InheritedWidget/Provider because the
+  # pantry matcher and portion scaler are derived state with several
+  # inputs, and Riverpod expresses derivation as a graph rather than as
+  # manual invalidation.
+  flutter_riverpod: ^2.5.1
+
+  # Backend.
+  supabase_flutter: ^2.5.6
+
+  # JWT at rest. Keychain on iOS/macOS, Keystore-backed EncryptedSharedPreferences
+  # on Android, libsecret on Linux, DPAPI-wrapped file on Windows.
+  flutter_secure_storage: ^9.2.2
+
+  # Native timer / external link handoff.
+  url_launcher: ^6.3.0
+
+  # Cover image selection + client-side downscale before upload.
+  image_picker: ^1.1.2
+  image: ^4.2.0
+
+  intl: ^0.19.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
