@@ -13,6 +13,9 @@ import '../../state/library_controller.dart';
 import '../../state/pantry_controllers.dart';
 import '../../state/providers.dart';
 import '../../state/recipe_controllers.dart';
+import '../../state/discover_controller.dart';
+import '../../data/repositories/storage_repository.dart';
+import '../widgets/recipe_appearance_section.dart';
 import '../responsive/adaptive_scaffold.dart';
 import '../responsive/breakpoints.dart';
 
@@ -69,19 +72,68 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
       if (!mounted) return;
 
       final RecipeDraft draft = ref.read(recipeFormProvider);
-      if (_pendingCover != null) {
-        final String? libraryId = ref.read(activeLibraryIdProvider);
-        if (libraryId != null) {
-          await ref.read(storageRepositoryProvider).uploadCover(
-                libraryId: libraryId,
-                recipeId: id,
-                bytes: _pendingCover!,
-              );
-          ref.invalidate(recipeDetailProvider(id));
+      final String? libraryId = ref.read(activeLibraryIdProvider);
+      final StorageRepository storage = ref.read(storageRepositoryProvider);
+      final List<String> failed = <String>[];
+
+      // The recipe is already saved at this point, so an image failure
+      // is reported rather than thrown: the user keeps their text.
+      Future<void> attempt(String what, Future<void> Function() job) async {
+        try {
+          await job();
+        } catch (error) {
+          failed.add('$what: ${Failure.from(error).message}');
         }
       }
 
+      if (libraryId != null) {
+        if (_pendingCover != null) {
+          await attempt(
+            'Cover',
+            () => storage.uploadCover(
+                libraryId: libraryId, recipeId: id, bytes: _pendingCover!),
+          );
+        }
+        if (_pendingBackground != null) {
+          await attempt(
+            'Background',
+            () => storage.uploadBackground(
+                libraryId: libraryId,
+                recipeId: id,
+                bytes: _pendingBackground!),
+          );
+        }
+        final int existingPhotos = widget.recipeId == null
+            ? 0
+            : (ref.read(recipeDetailProvider(id)).valueOrNull?.images.length ??
+                0);
+        for (int i = 0; i < _pendingPhotos.length; i++) {
+          await attempt(
+            'Photo ${i + 1}',
+            () => storage.addPhoto(
+              libraryId: libraryId,
+              recipeId: id,
+              bytes: _pendingPhotos[i],
+              sortOrder: existingPhotos + i,
+            ),
+          );
+        }
+        ref.invalidate(recipeDetailProvider(id));
+        ref.invalidate(recipeListProvider);
+        ref.invalidate(discoverFeedProvider);
+      }
+
       if (!mounted) return;
+      if (failed.isNotEmpty) {
+        setState(() {
+          _error = 'Saved, but some pictures did not upload. '
+              '${failed.join(' ')}';
+          _pendingCover = null;
+          _pendingBackground = null;
+          _pendingPhotos.clear();
+        });
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(draft.isEditing ? 'Recipe updated.' : 'Recipe saved.'),
@@ -96,6 +148,8 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
   }
 
   Uint8List? _pendingCover;
+  Uint8List? _pendingBackground;
+  final List<Uint8List> _pendingPhotos = <Uint8List>[];
 
   @override
   Widget build(BuildContext context) {
@@ -122,9 +176,20 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
       body: ResponsiveBuilder(
         builder: (BuildContext context, LayoutScope scope) {
           final Widget basics = _BasicsPane(
+            recipeId: widget.recipeId,
             onCoverPicked: (Uint8List bytes) =>
                 setState(() => _pendingCover = bytes),
             hasPendingCover: _pendingCover != null,
+            pendingBackground: _pendingBackground,
+            pendingPhotos: _pendingPhotos,
+            onBackgroundPicked: (Uint8List b) =>
+                setState(() => _pendingBackground = b),
+            onBackgroundCleared: () =>
+                setState(() => _pendingBackground = null),
+            onPhotosAdded: (Uint8List b) =>
+                setState(() => _pendingPhotos.add(b)),
+            onPendingPhotoRemoved: (int i) =>
+                setState(() => _pendingPhotos.removeAt(i)),
           );
           const Widget ingredients = _IngredientsPane();
           const Widget steps = _StepsPane();
@@ -203,15 +268,42 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
                 child: ContentWidth(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.all(24),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Expanded(flex: 4, child: basics),
-                        const SizedBox(width: 28),
-                        const Expanded(flex: 4, child: ingredients),
-                        const SizedBox(width: 28),
-                        const Expanded(flex: 5, child: steps),
-                      ],
+                    // Three columns need ~1200px; narrower than that the
+                    // ingredient rows and step editors get squeezed, so
+                    // ingredients and method share the right-hand column.
+                    child: LayoutBuilder(
+                      builder: (BuildContext context, BoxConstraints box) {
+                        if (box.maxWidth >= 1150) {
+                          return Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              Expanded(flex: 4, child: basics),
+                              const SizedBox(width: 28),
+                              const Expanded(flex: 4, child: ingredients),
+                              const SizedBox(width: 28),
+                              const Expanded(flex: 5, child: steps),
+                            ],
+                          );
+                        }
+                        return Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Expanded(flex: 5, child: basics),
+                            const SizedBox(width: 28),
+                            const Expanded(
+                              flex: 6,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: <Widget>[
+                                  ingredients,
+                                  SizedBox(height: 28),
+                                  steps,
+                                ],
+                              ),
+                            ),
+                          ],
+                        );
+                      },
                     ),
                   ),
                 ),
@@ -226,12 +318,26 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
 
 class _BasicsPane extends ConsumerWidget {
   const _BasicsPane({
+    required this.recipeId,
     required this.onCoverPicked,
     required this.hasPendingCover,
+    required this.pendingBackground,
+    required this.pendingPhotos,
+    required this.onBackgroundPicked,
+    required this.onBackgroundCleared,
+    required this.onPhotosAdded,
+    required this.onPendingPhotoRemoved,
   });
 
+  final String? recipeId;
   final ValueChanged<Uint8List> onCoverPicked;
   final bool hasPendingCover;
+  final Uint8List? pendingBackground;
+  final List<Uint8List> pendingPhotos;
+  final ValueChanged<Uint8List> onBackgroundPicked;
+  final VoidCallback onBackgroundCleared;
+  final ValueChanged<Uint8List> onPhotosAdded;
+  final ValueChanged<int> onPendingPhotoRemoved;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -284,6 +390,25 @@ class _BasicsPane extends ConsumerWidget {
           onChanged: (Season? v) {
             if (v != null) controller.setSeason(v);
           },
+        ),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<Cuisine?>(
+          initialValue: draft.cuisine,
+          decoration: const InputDecoration(
+            labelText: 'Cuisine (helps people find it)',
+          ),
+          items: <DropdownMenuItem<Cuisine?>>[
+            const DropdownMenuItem<Cuisine?>(
+              value: null,
+              child: Text('Not set'),
+            ),
+            for (final Cuisine c in Cuisine.values)
+              DropdownMenuItem<Cuisine?>(
+                value: c,
+                child: Text('${c.emoji}  ${c.label}'),
+              ),
+          ],
+          onChanged: controller.setCuisine,
         ),
         const SizedBox(height: 8),
         Row(
@@ -368,6 +493,16 @@ class _BasicsPane extends ConsumerWidget {
             'device, which strips the location data your camera embedded.',
             style: Theme.of(context).textTheme.bodySmall,
           ),
+        ),
+        const SizedBox(height: 16),
+        RecipeAppearanceSection(
+          recipeId: recipeId,
+          pendingBackground: pendingBackground,
+          pendingPhotos: pendingPhotos,
+          onBackgroundPicked: onBackgroundPicked,
+          onBackgroundCleared: onBackgroundCleared,
+          onPhotosAdded: onPhotosAdded,
+          onPendingPhotoRemoved: onPendingPhotoRemoved,
         ),
         const SizedBox(height: 16),
         SwitchListTile(
@@ -585,6 +720,7 @@ class _StepsPane extends ConsumerWidget {
       children: <Widget>[
         for (int i = 0; i < draft.steps.length; i++)
           Padding(
+            key: ObjectKey(draft.steps[i]),
             padding: const EdgeInsets.only(bottom: 10),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,

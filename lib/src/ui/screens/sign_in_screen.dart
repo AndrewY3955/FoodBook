@@ -318,8 +318,8 @@ class _StrengthBar extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         Text(
-          'At least ${PasswordPolicy.minLength} characters, with upper and '
-          'lower case, a number and a symbol.',
+          'At least ${PasswordPolicy.minLength} characters, with letters '
+          'and numbers. Longer is stronger.',
           style: Theme.of(context).textTheme.bodySmall,
         ),
       ],

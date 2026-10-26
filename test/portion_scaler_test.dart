@@ -1,6 +1,4 @@
 // Run: flutter test
-// Never executed here — no Dart toolchain was available. See VERIFICATION.md.
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:cookistrybook/src/core/quantity_format.dart';
 import 'package:cookistrybook/src/data/models/enums.dart';

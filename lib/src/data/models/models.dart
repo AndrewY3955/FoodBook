@@ -184,6 +184,27 @@ class RecipeStep {
       );
 }
 
+class RecipeImage {
+  const RecipeImage({
+    required this.id,
+    required this.storagePath,
+    this.caption,
+    this.sortOrder = 0,
+  });
+
+  final String id;
+  final String storagePath;
+  final String? caption;
+  final int sortOrder;
+
+  factory RecipeImage.fromJson(Map<String, dynamic> json) => RecipeImage(
+        id: _str(json['id']),
+        storagePath: _str(json['storage_path']),
+        caption: _strOrNull(json['caption']),
+        sortOrder: _int(json['sort_order'], 0),
+      );
+}
+
 class Recipe {
   const Recipe({
     required this.id,
@@ -205,7 +226,20 @@ class Recipe {
     this.steps = const <RecipeStep>[],
     this.tags = const <String>[],
     this.createdAt,
+    this.cuisine,
+    this.theme = RecipeTheme.plain,
+    this.accentColor,
+    this.backgroundImagePath,
+    this.images = const <RecipeImage>[],
   });
+
+  final Cuisine? cuisine;
+  final RecipeTheme theme;
+
+  /// `#RRGGBB`, validated by the database.
+  final String? accentColor;
+  final String? backgroundImagePath;
+  final List<RecipeImage> images;
 
   final String id;
   final String libraryId;
@@ -292,6 +326,14 @@ class Recipe {
       steps: listOf<RecipeStep>(json['recipe_steps'], RecipeStep.fromJson),
       tags: tagNames,
       createdAt: _date(json['created_at']),
+      cuisine: Cuisine.fromWire(_strOrNull(json['cuisine'])),
+      theme: RecipeTheme.fromWire(_strOrNull(json['theme'])),
+      accentColor: _strOrNull(json['accent_color']),
+      backgroundImagePath: _strOrNull(json['background_image_path']),
+      images: (listOf<RecipeImage>(json['recipe_images'], RecipeImage.fromJson)
+            ..sort((RecipeImage a, RecipeImage b) =>
+                a.sortOrder.compareTo(b.sortOrder)))
+          .toList(growable: false),
     );
   }
 }

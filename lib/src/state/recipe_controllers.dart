@@ -4,6 +4,7 @@ import '../data/models/enums.dart';
 import '../data/models/models.dart';
 import '../data/repositories/recipe_repository.dart';
 import 'library_controller.dart';
+import 'discover_controller.dart';
 import 'providers.dart';
 
 /// Current filter for the recipe box. Held separately from the list so
@@ -34,6 +35,12 @@ class RecipeFilterController extends Notifier<RecipeFilter> {
 
   void setIncludePublic(bool value) =>
       state = state.copyWith(includePublic: value);
+
+  void setCuisine(Cuisine? value) {
+    state = value == null
+        ? state.copyWith(clearCuisine: true)
+        : state.copyWith(cuisine: value);
+  }
 
   /// Handy shortcut on the seasonal chip: pick whatever season it is
   /// where the user is standing.
@@ -149,6 +156,9 @@ class RecipeFormController extends Notifier<RecipeDraft> {
       sourceUrl: recipe.sourceUrl,
       isPublic: recipe.isPublic,
       importSource: recipe.importSource,
+      cuisine: recipe.cuisine,
+      theme: recipe.theme,
+      accentColor: recipe.accentColor,
       ingredients: recipe.sortedIngredients
           .map((RecipeIngredient i) => DraftIngredient(
                 ingredientId: i.ingredientId,
@@ -187,7 +197,22 @@ class RecipeFormController extends Notifier<RecipeDraft> {
     );
   }
 
-  void _touch() => state = state;
+  void _touch() => state = state.snapshot();
+
+  void setCuisine(Cuisine? value) {
+    state.cuisine = value;
+    _touch();
+  }
+
+  void setTheme(RecipeTheme value) {
+    state.theme = value;
+    _touch();
+  }
+
+  void setAccentColor(String? value) {
+    state.accentColor = value;
+    _touch();
+  }
 
   void setTitle(String value) {
     state.title = value;
@@ -305,6 +330,7 @@ class RecipeFormController extends Notifier<RecipeDraft> {
         .save(draft: state, libraryId: libraryId);
 
     ref.invalidate(recipeListProvider);
+    ref.invalidate(discoverFeedProvider);
     ref.invalidate(recipeDetailProvider(recipeId));
     return recipeId;
   }

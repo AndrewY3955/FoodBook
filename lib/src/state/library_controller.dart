@@ -57,8 +57,14 @@ class ActiveLibraryController extends Notifier<String?> {
   Future<void> create(String name) async {
     final Library created =
         await ref.read(libraryRepositoryProvider).create(name);
-    ref.invalidate(myLibrariesProvider);
+    await _reloadLibraries();
     state = created.id;
+  }
+
+  /// Waits for the refreshed list so the new selection isn't discarded
+  /// by build() while the list is still loading.
+  Future<void> _reloadLibraries() async {
+    final List<Library> _ = await ref.refresh(myLibrariesProvider.future);
   }
 
   Future<void> rename(String libraryId, String name) async {
@@ -70,6 +76,14 @@ class ActiveLibraryController extends Notifier<String?> {
     await ref.read(libraryRepositoryProvider).leave(libraryId);
     if (state == libraryId) state = null;
     ref.invalidate(myLibrariesProvider);
+  }
+
+  Future<void> joinWithInvitation(String token) async {
+    final String libraryId =
+        await ref.read(libraryRepositoryProvider).acceptInvitation(token);
+    ref.invalidate(libraryMembersProvider(libraryId));
+    await _reloadLibraries();
+    state = libraryId;
   }
 }
 

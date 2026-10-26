@@ -48,6 +48,9 @@ class RecipeDraft {
     this.sourceUrl,
     this.isPublic = false,
     this.importSource = ImportSource.manual,
+    this.cuisine,
+    this.theme = RecipeTheme.plain,
+    this.accentColor,
     List<DraftIngredient>? ingredients,
     List<DraftStep>? steps,
     List<String>? tags,
@@ -67,11 +70,37 @@ class RecipeDraft {
   String? sourceUrl;
   bool isPublic;
   ImportSource importSource;
+  Cuisine? cuisine;
+  RecipeTheme theme;
+  String? accentColor;
   final List<DraftIngredient> ingredients;
   final List<DraftStep> steps;
   final List<String> tags;
 
   bool get isEditing => id != null;
+
+  /// A new object sharing no list with this one, so a notifier holding
+  /// it sees a changed value and rebuilds its listeners.
+  RecipeDraft snapshot() => RecipeDraft(
+        id: id,
+        title: title,
+        description: description,
+        mealType: mealType,
+        season: season,
+        baseServings: baseServings,
+        prepMinutes: prepMinutes,
+        cookMinutes: cookMinutes,
+        externalVideoUrl: externalVideoUrl,
+        sourceUrl: sourceUrl,
+        isPublic: isPublic,
+        importSource: importSource,
+        cuisine: cuisine,
+        theme: theme,
+        accentColor: accentColor,
+        ingredients: List<DraftIngredient>.of(ingredients),
+        steps: List<DraftStep>.of(steps),
+        tags: List<String>.of(tags),
+      );
 }
 
 class RecipeFilter {
@@ -81,8 +110,10 @@ class RecipeFilter {
     this.query = '',
     this.tag,
     this.includePublic = false,
+    this.cuisine,
   });
 
+  final Cuisine? cuisine;
   final MealType? mealType;
   final Season? season;
   final String query;
@@ -90,7 +121,11 @@ class RecipeFilter {
   final bool includePublic;
 
   bool get isActive =>
-      mealType != null || season != null || query.isNotEmpty || tag != null;
+      mealType != null ||
+      season != null ||
+      query.isNotEmpty ||
+      tag != null ||
+      cuisine != null;
 
   RecipeFilter copyWith({
     MealType? mealType,
@@ -98,6 +133,8 @@ class RecipeFilter {
     String? query,
     String? tag,
     bool? includePublic,
+    Cuisine? cuisine,
+    bool clearCuisine = false,
     bool clearMealType = false,
     bool clearSeason = false,
     bool clearTag = false,
@@ -108,6 +145,7 @@ class RecipeFilter {
         query: query ?? this.query,
         tag: clearTag ? null : (tag ?? this.tag),
         includePublic: includePublic ?? this.includePublic,
+        cuisine: clearCuisine ? null : (cuisine ?? this.cuisine),
       );
 }
 
@@ -123,13 +161,15 @@ class RecipeRepository {
       'id, library_id, title, description, meal_type, season, '
       'base_servings, prep_minutes, cook_minutes, cover_image_path, '
       'source_url, external_video_url, import_source, is_public, '
-      'forked_from_recipe_id, created_at, '
+      'forked_from_recipe_id, created_at, cuisine, theme, accent_color, '
+      'background_image_path, '
       'recipe_tags(tags(name))';
 
   static const String _detailColumns = '$_listColumns, '
       'recipe_ingredients(id, ingredient_id, quantity, unit, note, is_optional, '
       'sort_order, ingredients(name, grocery_category)), '
-      'recipe_steps(id, step_number, instruction, timer_seconds)';
+      'recipe_steps(id, step_number, instruction, timer_seconds), '
+      'recipe_images(id, storage_path, caption, sort_order)';
 
   Future<List<Recipe>> list({
     required String libraryId,
@@ -159,6 +199,9 @@ class RecipeRepository {
       if (filter.mealType != null) {
         builder = builder.eq('meal_type', filter.mealType!.wire);
       }
+      if (filter.cuisine != null) {
+        builder = builder.eq('cuisine', filter.cuisine!.wire);
+      }
       if (filter.season != null) {
         builder = builder.inFilter(
           'season',
@@ -187,6 +230,44 @@ class RecipeRepository {
       throw Failure.from(error);
     }
   }
+
+  /// Public recipes from every library, newest first. Anonymous-safe:
+  /// it relies on the public-recipe RLS policies and never filters by
+  /// library. Tags are not embedded because tag rows are library-private.
+  Future<List<Recipe>> feed({
+    Cuisine? cuisine,
+    MealType? mealType,
+    String query = '',
+    int limit = 24,
+    int offset = 0,
+  }) async {
+    try {
+      PostgrestFilterBuilder<List<Map<String, dynamic>>> builder = _client
+          .from('recipes')
+          .select(_feedColumns)
+          .eq('is_public', true);
+      if (cuisine != null) builder = builder.eq('cuisine', cuisine.wire);
+      if (mealType != null) builder = builder.eq('meal_type', mealType.wire);
+      if (query.trim().isNotEmpty) {
+        final String? pattern = PostgrestSafe.likePattern(
+          InputSanitizer.singleLine(query, maxLength: 60),
+        );
+        if (pattern != null) builder = builder.ilike('title', pattern);
+      }
+      final List<Map<String, dynamic>> rows = await builder
+          .order('created_at', ascending: false)
+          .range(offset, offset + limit - 1);
+      return rows.map(Recipe.fromJson).toList(growable: false);
+    } catch (error) {
+      throw Failure.from(error);
+    }
+  }
+
+  static const String _feedColumns =
+      'id, library_id, title, description, meal_type, season, '
+      'base_servings, prep_minutes, cook_minutes, cover_image_path, '
+      'import_source, is_public, forked_from_recipe_id, created_at, '
+      'cuisine, theme, accent_color';
 
   Future<Recipe> byId(String recipeId) async {
     try {
@@ -251,6 +332,9 @@ class RecipeRepository {
           : InputSanitizer.importUrl(draft.sourceUrl!),
       'import_source': draft.importSource.wire,
       'is_public': draft.isPublic,
+      'cuisine': draft.cuisine?.wire,
+      'theme': draft.theme.wire,
+      'accent_color': draft.accentColor,
     };
 
     try {

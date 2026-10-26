@@ -38,12 +38,13 @@ class Env {
 
   static const String coverBucket = 'recipe-covers';
 
-  /// Longest edge, in pixels, that a cover image is resized to before
-  /// upload. Uploading a 12 MP phone photo to show a 400 px card wastes
-  /// the user's data and the project's storage quota.
-  static const int coverMaxEdge = 1280;
+  /// Longest edge, in pixels, that a recipe image is resized to before
+  /// upload. A 12 MP phone photo only needs around 900 px at the full
+  /// recipe detail size, and aggressively downsizing it cuts storage and
+  /// upload time without harming the UI.
+  static const int coverMaxEdge = 900;
 
-  static const int coverJpegQuality = 82;
+  static const int coverJpegQuality = 68;
 
   static bool get isConfigured =>
       supabaseUrl.isNotEmpty && supabasePublishableKey.isNotEmpty;

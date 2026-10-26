@@ -7,6 +7,7 @@ import '../../data/repositories/recipe_repository.dart';
 import '../../state/recipe_controllers.dart';
 import '../responsive/adaptive_scaffold.dart';
 import '../responsive/breakpoints.dart';
+import '../widgets/category_slider.dart';
 import '../widgets/recipe_card.dart';
 import 'import_screen.dart';
 import 'recipe_detail_screen.dart';
@@ -182,24 +183,37 @@ class _FilterBarState extends ConsumerState<_FilterBar> {
               ),
               onChanged: controller.setQuery,
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 6),
+            CategorySlider<MealType>(
+              semanticsLabel: 'Meal type',
+              selected: filter.mealType,
+              onChanged: controller.setMealType,
+              options: <CategoryOption<MealType>>[
+                for (final MealType meal in MealType.values)
+                  CategoryOption<MealType>(
+                    value: meal,
+                    label: meal.label,
+                    emoji: meal.emoji,
+                  ),
+              ],
+            ),
+            CategorySlider<Cuisine>(
+              semanticsLabel: 'Cuisine',
+              selected: filter.cuisine,
+              onChanged: controller.setCuisine,
+              options: <CategoryOption<Cuisine>>[
+                for (final Cuisine c in Cuisine.values)
+                  CategoryOption<Cuisine>(
+                    value: c,
+                    label: c.label,
+                    emoji: c.emoji,
+                  ),
+              ],
+            ),
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: <Widget>[
-                  for (final MealType meal in MealType.values)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 6),
-                      child: FilterChip(
-                        label: Text(meal.label),
-                        selected: filter.mealType == meal,
-                        onSelected: (bool on) =>
-                            controller.setMealType(on ? meal : null),
-                      ),
-                    ),
-                  const SizedBox(width: 6),
-                  const _Separator(),
-                  const SizedBox(width: 6),
                   for (final Season season in Season.values)
                     if (season != Season.allYear)
                       Padding(

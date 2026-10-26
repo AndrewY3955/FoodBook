@@ -29,10 +29,6 @@ class PostgrestSafe {
     r'[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
   );
 
-  /// Every character with meaning in the PostgREST filter grammar, plus
-  /// the LIKE wildcards.
-  static final RegExp _filterMeta = RegExp(r'''[,.()*%\\"'\[\]{}:]''');
-
   /// Returns the id only if it is a well-formed UUID.
   ///
   /// Interpolating an id into `.or()` is safe exactly as long as the id
@@ -54,15 +50,15 @@ class PostgrestSafe {
     return checked;
   }
 
-  /// Strips every filter-grammar and wildcard character from free text
-  /// before it is used as an ilike pattern.
+  /// Free text prepared for an ilike pattern: whitespace collapsed and the
+  /// one character PostgREST rewrites to a wildcard (`*`) removed.
   ///
-  /// The cost is that a search for "St. John's" also matches
-  /// "St John s" — acceptable for ingredient and recipe names, and the
-  /// trigram index does not care about punctuation anyway.
+  /// Punctuation is kept. A standalone `ilike` value is not part of the
+  /// `.or()` grammar, so `St. John's` can be searched as typed. The LIKE
+  /// metacharacters (`%`, `_`, `\`) are escaped by [escapeLike] instead.
   static String likeTerm(String value, {int maxLength = 60}) {
     final String stripped = value
-        .replaceAll(_filterMeta, ' ')
+        .replaceAll('*', ' ')
         .replaceAll(RegExp(r'\s{2,}'), ' ')
         .trim();
     return stripped.length <= maxLength
@@ -70,9 +66,19 @@ class PostgrestSafe {
         : stripped.substring(0, maxLength).trim();
   }
 
+  /// Escapes `\`, `%` and `_` so they match themselves.
+  static String escapeLike(String value) => value
+      .replaceAll(r'\', r'\\')
+      .replaceAll('%', r'\%')
+      .replaceAll('_', r'\_');
+
   /// Builds `%term%` only when the term survived stripping.
   static String? likePattern(String value, {int maxLength = 60}) {
     final String term = likeTerm(value, maxLength: maxLength);
-    return term.isEmpty ? null : '%$term%';
+    return term.isEmpty ? null : '%${escapeLike(term)}%';
   }
+
+  /// Escaped term for a case-insensitive exact-name match.
+  static String likeExact(String value, {int maxLength = 80}) =>
+      escapeLike(likeTerm(value, maxLength: maxLength));
 }

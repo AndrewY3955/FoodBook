@@ -83,6 +83,8 @@ class RecipeCard extends ConsumerWidget {
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: <Widget>[
                       _Meta(text: recipe.mealType.label),
+                      if (recipe.cuisine != null)
+                        _Meta(text: recipe.cuisine!.label),
                       if (recipe.season != Season.allYear)
                         _Meta(text: recipe.season.label),
                       if (recipe.totalMinutes != null)

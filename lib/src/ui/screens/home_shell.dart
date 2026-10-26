@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/failure.dart';
 import '../../data/models/models.dart';
 import '../../state/library_controller.dart';
 import '../../state/providers.dart';
 import '../../state/shopping_controller.dart';
 import '../responsive/adaptive_scaffold.dart';
 import '../responsive/breakpoints.dart';
+import 'discover_screen.dart';
+import 'library_settings_screen.dart';
+import 'invitation_dialogs.dart';
 import 'pantry_planner_screen.dart';
 import 'recipe_box_screen.dart';
 import 'shopping_list_screen.dart';
@@ -27,15 +31,45 @@ class _HomeShellState extends ConsumerState<HomeShell> {
 
   static const List<String> _titles = <String>[
     'Recipe Box',
+    'Discover',
     'Planner & Pantry',
     'Shopping List',
   ];
 
+  Future<void> _confirmDeleteAccount(BuildContext context) async {
+    final bool? ok = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) => AlertDialog(
+        title: const Text('Delete your account?'),
+        content: const Text(
+            'Your recipes, photos, pantry and plans are removed for good. '
+            'Anyone who forked or saved one of your recipes keeps their own copy.'),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Keep my account'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Delete everything'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await ref.read(storageRepositoryProvider).deleteAccount();
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('$error')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final int unchecked = ref.watch(uncheckedCountProvider);
-    final AsyncValue<List<Library>> libraries =
-        ref.watch(myLibrariesProvider);
+    final AsyncValue<List<Library>> libraries = ref.watch(myLibrariesProvider);
 
     return libraries.when(
       loading: () => const Scaffold(
@@ -66,9 +100,23 @@ class _HomeShellState extends ConsumerState<HomeShell> {
           leadingSidebar: const LibrarySwitcher(),
           actions: <Widget>[
             IconButton(
+              tooltip: 'Library settings',
+              icon: const Icon(Icons.settings_outlined),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const LibrarySettingsScreen(),
+                ),
+              ),
+            ),
+            IconButton(
               tooltip: 'Sign out',
               icon: const Icon(Icons.logout),
               onPressed: () => ref.read(authRepositoryProvider).signOut(),
+            ),
+            IconButton(
+              tooltip: 'Delete account',
+              icon: const Icon(Icons.person_remove_outlined),
+              onPressed: () => _confirmDeleteAccount(context),
             ),
           ],
           destinations: <AdaptiveDestination>[
@@ -76,6 +124,11 @@ class _HomeShellState extends ConsumerState<HomeShell> {
               label: 'Recipes',
               icon: Icons.menu_book_outlined,
               selectedIcon: Icons.menu_book,
+            ),
+            const AdaptiveDestination(
+              label: 'Discover',
+              icon: Icons.explore_outlined,
+              selectedIcon: Icons.explore,
             ),
             const AdaptiveDestination(
               label: 'Plan & Pantry',
@@ -93,6 +146,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
             index: _index,
             children: const <Widget>[
               RecipeBoxScreen(),
+              DiscoverScreen(),
               PantryPlannerScreen(),
               ShoppingListScreen(),
             ],
@@ -115,6 +169,7 @@ class _NoLibrary extends ConsumerStatefulWidget {
 class _NoLibraryState extends ConsumerState<_NoLibrary> {
   final TextEditingController _name = TextEditingController();
   bool _busy = false;
+  String? _error;
 
   @override
   void dispose() {
@@ -142,27 +197,45 @@ class _NoLibraryState extends ConsumerState<_NoLibrary> {
                 const SizedBox(height: 8),
                 const Text(
                   'A library holds your recipes, pantry and plan. '
-                  'You can invite the people you cook with later.',
+                  'Create one, or join one you were invited to.',
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 20),
                 TextField(
                   controller: _name,
+                  enabled: !_busy,
                   decoration: const InputDecoration(
                     labelText: 'Cookbook name',
                     hintText: 'The Rivera Family Cookbook',
                   ),
                 ),
+                if (_error != null) ...<Widget>[
+                  const SizedBox(height: 8),
+                  Text(
+                    _error!,
+                    style:
+                        TextStyle(color: Theme.of(context).colorScheme.error),
+                  ),
+                ],
                 const SizedBox(height: 16),
                 FilledButton(
                   onPressed: _busy
                       ? null
                       : () async {
-                          setState(() => _busy = true);
+                          setState(() {
+                            _busy = true;
+                            _error = null;
+                          });
                           try {
                             await ref
                                 .read(activeLibraryProvider.notifier)
                                 .create(_name.text);
+                          } catch (error) {
+                            if (mounted) {
+                              setState(
+                                () => _error = Failure.from(error).message,
+                              );
+                            }
                           } finally {
                             if (mounted) setState(() => _busy = false);
                           }
@@ -170,7 +243,13 @@ class _NoLibraryState extends ConsumerState<_NoLibrary> {
                   style: FilledButton.styleFrom(
                     minimumSize: const Size.fromHeight(48),
                   ),
-                  child: const Text('Create'),
+                  child: Text(_busy ? 'Creating…' : 'Create'),
+                ),
+                const SizedBox(height: 8),
+                TextButton(
+                  onPressed:
+                      _busy ? null : () => showJoinWithCodeDialog(context, ref),
+                  child: const Text('I have an invitation code'),
                 ),
               ],
             ),

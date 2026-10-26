@@ -1,9 +1,5 @@
 // Run: flutter test
 //
-// NOTE FOR REVIEWERS: these tests have never been executed. They were
-// written in an environment with no Dart toolchain. Treat a green run
-// as the first evidence they work, not a confirmation.
-//
 // The URL corpus below is the same corpus that was run against the
 // server-side CHECK function public.is_safe_http_url, which did pass
 // 26/26. If a case here disagrees with the server, the server is the
@@ -136,15 +132,21 @@ void main() {
 
   group('password policy', () {
     test('accepts a compliant password', () {
-      expect(PasswordPolicy.isValid('Shakshuka!2026x'), isTrue);
+      expect(PasswordPolicy.isValid('shakshuka2026'), isTrue);
+      expect(PasswordPolicy.isValid('mango7tree'), isTrue);
     });
 
     test('rejects one that is too short', () {
-      expect(PasswordPolicy.isValid('Sh0rt!aa'), isFalse);
+      expect(PasswordPolicy.isValid('Sh0rt1a'), isFalse);
+    });
+
+    test('requires both letters and numbers', () {
+      expect(PasswordPolicy.isValid('onlyletters'), isFalse);
+      expect(PasswordPolicy.isValid('48291736'), isFalse);
     });
 
     test('rejects past the bcrypt truncation point', () {
-      expect(PasswordPolicy.isValid('Aa1!${'x' * 80}'), isFalse);
+      expect(PasswordPolicy.isValid('a1${'x' * 80}'), isFalse);
     });
 
     test('rejects common seeds even when otherwise compliant', () {
@@ -152,7 +154,7 @@ void main() {
     });
 
     test('rejects whitespace', () {
-      expect(PasswordPolicy.isValid('Abcdef 1234!x'), isFalse);
+      expect(PasswordPolicy.isValid('abcdef 1234x'), isFalse);
     });
   });
 }

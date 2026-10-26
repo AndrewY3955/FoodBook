@@ -5,6 +5,13 @@ import '../../core/security/input_sanitizer.dart';
 import '../models/enums.dart';
 import '../models/models.dart';
 
+class InvitationToken {
+  const InvitationToken({required this.token, required this.expiresAt});
+
+  final String token;
+  final DateTime expiresAt;
+}
+
 class LibraryRepository {
   LibraryRepository(this._client);
 
@@ -39,7 +46,7 @@ class LibraryRepository {
       final List<Map<String, dynamic>> rows = await _client
           .from('library_members')
           .select(
-              'profiles!library_members_user_id_fkey(id, display_name, avatar_path)')
+              'profiles!library_members_profile_fkey(id, display_name, avatar_path)')
           .eq('library_id', libraryId)
           .isFilter('revoked_at', null);
 
@@ -100,6 +107,56 @@ class LibraryRepository {
           .update(<String, dynamic>{'name': clean}).eq('id', libraryId);
     } catch (error) {
       throw Failure.from(error);
+    }
+  }
+
+  /// Creates a single-use invitation. The returned token is shown once;
+  /// the database keeps only its hash.
+  Future<InvitationToken> createInvitation(
+    String libraryId, {
+    MemberRole role = MemberRole.member,
+    String? email,
+    int ttlHours = 168,
+  }) async {
+    final String cleanEmail = (email ?? '').trim();
+    try {
+      final dynamic result = await _client.rpc(
+        'create_library_invitation',
+        params: <String, dynamic>{
+          'p_library_id': libraryId,
+          'p_role': role == MemberRole.admin ? 'admin' : 'member',
+          'p_email': cleanEmail.isEmpty ? null : cleanEmail,
+          'p_ttl_hours': ttlHours,
+        },
+      );
+      final Map<String, dynamic> row =
+          (result is List ? result.first : result) as Map<String, dynamic>;
+      return InvitationToken(
+        token: row['token'] as String,
+        expiresAt: DateTime.parse(row['expires_at'] as String),
+      );
+    } catch (error) {
+      throw Failure.from(error);
+    }
+  }
+
+  /// Redeems an invitation token and returns the joined library's id.
+  Future<String> acceptInvitation(String token) async {
+    final String clean = token.trim();
+    if (clean.isEmpty) throw const Failure('Enter an invitation code.');
+    try {
+      final dynamic id = await _client.rpc(
+        'accept_library_invitation',
+        params: <String, dynamic>{'p_token': clean},
+      );
+      return id as String;
+    } catch (error) {
+      final Failure failure = Failure.from(error);
+      if (failure.isAuth) throw failure;
+      throw const Failure(
+        'That invitation code is not valid. It may have expired, been '
+        'used already, or been issued to a different email address.',
+      );
     }
   }
 

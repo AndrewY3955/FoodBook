@@ -40,6 +40,67 @@ enum Season {
       );
 }
 
+/// Closed list mirrored by recipes_cuisine_check in migration 0012.
+enum Cuisine {
+  american('american', 'American', '🍔'),
+  italian('italian', 'Italian', '🍝'),
+  mexican('mexican', 'Mexican', '🌮'),
+  french('french', 'French', '🥐'),
+  mediterranean('mediterranean', 'Mediterranean', '🫒'),
+  middleEastern('middle_eastern', 'Middle Eastern', '🧆'),
+  indian('indian', 'Indian', '🍛'),
+  chinese('chinese', 'Chinese', '🥟'),
+  japanese('japanese', 'Japanese', '🍣'),
+  thai('thai', 'Thai', '🍜'),
+  vegetarian('vegetarian', 'Vegetarian', '🥗'),
+  vegan('vegan', 'Vegan', '🌱'),
+  seafood('seafood', 'Seafood', '🦐'),
+  baking('baking', 'Baking', '🍞');
+
+  const Cuisine(this.wire, this.label, this.emoji);
+  final String wire;
+  final String label;
+  final String emoji;
+
+  static Cuisine? fromWire(String? value) {
+    for (final Cuisine c in Cuisine.values) {
+      if (c.wire == value) return c;
+    }
+    return null;
+  }
+}
+
+extension MealTypeEmoji on MealType {
+  String get emoji => switch (this) {
+        MealType.breakfast => '🍳',
+        MealType.lunch => '🥪',
+        MealType.dinner => '🍽️',
+        MealType.snack => '🥨',
+        MealType.dessert => '🍰',
+      };
+}
+
+/// Preset page themes mirrored by recipes_theme_check in migration 0012.
+enum RecipeTheme {
+  plain('plain', 'Plain', 0xFFFFFFFF, 0xFF1B1B1B),
+  cream('cream', 'Cream', 0xFFFFF6E5, 0xFF3B2F1E),
+  herb('herb', 'Herb', 0xFFE8F3E4, 0xFF1F3A1F),
+  tomato('tomato', 'Tomato', 0xFFFCE7E3, 0xFF4A1A12),
+  ocean('ocean', 'Ocean', 0xFFE3EFF8, 0xFF12304A),
+  night('night', 'Night', 0xFF1E1E24, 0xFFF1EEE8);
+
+  const RecipeTheme(this.wire, this.label, this.background, this.foreground);
+  final String wire;
+  final String label;
+  final int background;
+  final int foreground;
+
+  static RecipeTheme fromWire(String? value) => RecipeTheme.values.firstWhere(
+        (RecipeTheme e) => e.wire == value,
+        orElse: () => RecipeTheme.plain,
+      );
+}
+
 /// Order matters: this is the order the shopping list renders its
 /// headers in, chosen to roughly match how a supermarket is walked.
 enum GroceryCategory {

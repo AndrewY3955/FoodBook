@@ -6,6 +6,7 @@ import '../../data/models/enums.dart';
 import '../../data/models/models.dart';
 import '../../platform/native_timer.dart';
 import '../../state/cooking_session_controller.dart';
+import '../../state/discover_controller.dart';
 import '../../state/library_controller.dart';
 import '../../state/portion_scaler.dart';
 import '../../state/providers.dart';
@@ -13,6 +14,7 @@ import '../../state/recipe_controllers.dart';
 import '../../state/shopping_controller.dart';
 import '../responsive/adaptive_scaffold.dart';
 import '../responsive/breakpoints.dart';
+import '../widgets/recipe_appearance_section.dart' show parseAccent;
 import '../widgets/recipe_card.dart';
 import 'cooking_mode_screen.dart';
 import 'recipe_form_screen.dart';
@@ -65,12 +67,11 @@ class _Loaded extends ConsumerWidget {
         );
         final Widget steps = _StepPanel(recipe: recipe);
 
-        return CustomScrollView(
+        final Widget scroll = CustomScrollView(
           slivers: <Widget>[
             SliverAppBar.large(
               pinned: true,
               expandedHeight: scope.isPhone ? 220 : 280,
-              title: Text(recipe.title),
               actions: <Widget>[
                 if (isOwn)
                   IconButton(
@@ -88,11 +89,20 @@ class _Loaded extends ConsumerWidget {
                 _OverflowMenu(recipe: recipe, isOwn: isOwn),
               ],
               flexibleSpace: FlexibleSpaceBar(
+                title: Text(recipe.title,
+                    maxLines: 2, overflow: TextOverflow.ellipsis),
+                titlePadding: const EdgeInsetsDirectional.only(
+                  start: 56,
+                  end: 96,
+                  bottom: 14,
+                ),
                 background: recipe.coverImagePath == null
-                    ? Container(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .surfaceContainerHighest,
+                    ? Builder(
+                        builder: (BuildContext inner) => Container(
+                          color: Theme.of(inner)
+                              .colorScheme
+                              .surfaceContainerHighest,
+                        ),
                       )
                     : _HeaderImage(path: recipe.coverImagePath!),
               ),
@@ -105,6 +115,15 @@ class _Loaded extends ConsumerWidget {
                 ),
               ),
             ),
+            if (recipe.images.isNotEmpty)
+              SliverToBoxAdapter(
+                child: ContentWidth(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                    child: _Gallery(images: recipe.images),
+                  ),
+                ),
+              ),
             SliverToBoxAdapter(
               child: ContentWidth(
                 child: Padding(
@@ -133,7 +152,186 @@ class _Loaded extends ConsumerWidget {
             ),
           ],
         );
+
+        return _Themed(recipe: recipe, child: scroll);
       },
+    );
+  }
+}
+
+/// Applies the recipe's theme, accent colour and background picture to
+/// everything beneath it. A recipe with none of those set is left on the
+/// app theme untouched.
+class _Themed extends ConsumerWidget {
+  const _Themed({required this.recipe, required this.child});
+
+  final Recipe recipe;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final bool styled = recipe.theme != RecipeTheme.plain ||
+        recipe.accentColor != null ||
+        recipe.backgroundImagePath != null;
+    if (!styled) return child;
+
+    final ThemeData parent = Theme.of(context);
+    final bool dark = recipe.theme == RecipeTheme.night;
+    final Color background = Color(recipe.theme.background);
+    final Color foreground = Color(recipe.theme.foreground);
+    final Color? accent = parseAccent(recipe.accentColor);
+
+    final ColorScheme scheme = ColorScheme.fromSeed(
+      seedColor: accent ?? parent.colorScheme.primary,
+      brightness: dark ? Brightness.dark : Brightness.light,
+    ).copyWith(
+      surface: background,
+      onSurface: foreground,
+      surfaceContainerHighest:
+          Color.alphaBlend(foreground.withValues(alpha: 0.08), background),
+    );
+
+    final ThemeData themed = parent.copyWith(
+      colorScheme: scheme,
+      scaffoldBackgroundColor: background,
+      textTheme: parent.textTheme
+          .apply(bodyColor: foreground, displayColor: foreground),
+      iconTheme: parent.iconTheme.copyWith(color: foreground),
+      appBarTheme: parent.appBarTheme.copyWith(
+        backgroundColor: background,
+        foregroundColor: foreground,
+        surfaceTintColor: Colors.transparent,
+      ),
+      chipTheme: parent.chipTheme.copyWith(
+        labelStyle: TextStyle(color: foreground),
+        backgroundColor: Color.alphaBlend(
+          foreground.withValues(alpha: 0.10),
+          background,
+        ),
+        side: BorderSide(color: foreground.withValues(alpha: 0.25)),
+      ),
+    );
+
+    // Text outside a Material ancestor inherits the app's default style,
+    // so the themed colours are re-applied for the whole subtree.
+    return Theme(
+      data: themed,
+      child: DefaultTextStyle(
+        style: themed.textTheme.bodyMedium ?? const TextStyle(),
+        child: IconTheme(
+          data: themed.iconTheme,
+          child: Stack(
+            children: <Widget>[
+              Positioned.fill(child: ColoredBox(color: background)),
+              if (recipe.backgroundImagePath != null)
+                Positioned.fill(
+                  child: _BackdropImage(
+                    path: recipe.backgroundImagePath!,
+                    background: background,
+                  ),
+                ),
+              child,
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BackdropImage extends ConsumerWidget {
+  const _BackdropImage({required this.path, required this.background});
+
+  final String path;
+  final Color background;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return ref.watch(signedCoverProvider(path)).maybeWhen(
+          data: (String? url) => url == null
+              ? const SizedBox.shrink()
+              : Stack(
+                  fit: StackFit.expand,
+                  children: <Widget>[
+                    Image.network(
+                      url,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                    ),
+                    // A scrim keeps body text readable over any picture.
+                    ColoredBox(color: background.withValues(alpha: 0.86)),
+                  ],
+                ),
+          orElse: () => const SizedBox.shrink(),
+        );
+  }
+}
+
+class _Gallery extends ConsumerWidget {
+  const _Gallery({required this.images});
+
+  final List<RecipeImage> images;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return SizedBox(
+      height: 120,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: images.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (BuildContext context, int i) {
+          final RecipeImage image = images[i];
+          return Semantics(
+            button: true,
+            label: image.caption ?? 'Recipe photo ${i + 1}',
+            child: InkWell(
+              borderRadius: BorderRadius.circular(10),
+              onTap: () => showDialog<void>(
+                context: context,
+                builder: (BuildContext context) => Dialog(
+                  child: Consumer(
+                    builder: (BuildContext context, WidgetRef ref, _) => ref
+                        .watch(signedCoverProvider(image.storagePath))
+                        .maybeWhen(
+                          data: (String? url) => url == null
+                              ? const SizedBox(
+                                  height: 200,
+                                  child: Center(child: Text('Not available')),
+                                )
+                              : InteractiveViewer(
+                                  child: Image.network(url),
+                                ),
+                          orElse: () => const SizedBox(
+                            height: 200,
+                            child: Center(child: CircularProgressIndicator()),
+                          ),
+                        ),
+                  ),
+                ),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: AspectRatio(
+                  aspectRatio: 4 / 3,
+                  child: ref
+                      .watch(signedCoverProvider(image.storagePath))
+                      .maybeWhen(
+                        data: (String? url) => url == null
+                            ? const SizedBox.shrink()
+                            : Image.network(url, fit: BoxFit.cover),
+                        orElse: () => Container(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .surfaceContainerHighest,
+                        ),
+                      ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 }
@@ -512,11 +710,19 @@ class _OverflowMenu extends ConsumerWidget {
             final String newId = await ref
                 .read(recipeRepositoryProvider)
                 .fork(recipeId: recipe.id, libraryId: libraryId);
+            final int failed = await ref
+                .read(storageRepositoryProvider)
+                .copyImagesForFork(
+                    sourceRecipeId: recipe.id,
+                    newRecipeId: newId,
+                    libraryId: libraryId);
             ref.invalidate(recipeListProvider);
             if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Forked into your library. Text only.'),
+                SnackBar(
+                  content: Text(failed == 0
+                      ? 'Forked into your library with its photos and style.'
+                      : 'Forked, but $failed image(s) could not be copied.'),
                 ),
               );
               Navigator.of(context).pushReplacement(
@@ -531,6 +737,7 @@ class _OverflowMenu extends ConsumerWidget {
                 .setPublic(recipe.id, !recipe.isPublic);
             ref.invalidate(recipeDetailProvider(recipe.id));
             ref.invalidate(recipeListProvider);
+            ref.invalidate(discoverFeedProvider);
           case 'delete':
             final bool? ok = await showDialog<bool>(
               context: context,
@@ -552,6 +759,7 @@ class _OverflowMenu extends ConsumerWidget {
             if (ok ?? false) {
               await ref.read(recipeRepositoryProvider).delete(recipe.id);
               ref.invalidate(recipeListProvider);
+              ref.invalidate(discoverFeedProvider);
               if (context.mounted) Navigator.of(context).pop();
             }
         }
@@ -562,7 +770,7 @@ class _OverflowMenu extends ConsumerWidget {
           child: ListTile(
             leading: Icon(Icons.call_split),
             title: Text('Fork into my library'),
-            subtitle: Text('Text only'),
+            subtitle: Text('Text, notes, photos and style'),
             contentPadding: EdgeInsets.zero,
           ),
         ),

@@ -62,7 +62,7 @@ class IngredientRepository {
         PostgrestSafe.requireUuid(libraryId, 'libraryId');
     // Exact-match lookup: the term is stripped of wildcard characters so
     // a name containing '%' cannot broaden the match.
-    final String exact = PostgrestSafe.likeTerm(clean, maxLength: 80);
+    final String exact = PostgrestSafe.likeExact(clean);
 
     try {
       final List<Map<String, dynamic>> existing = await _client

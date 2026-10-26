@@ -7,7 +7,7 @@
 class PasswordPolicy {
   const PasswordPolicy._();
 
-  static const int minLength = 12;
+  static const int minLength = 8;
 
   /// bcrypt silently ignores everything past 72 bytes. A user who sets
   /// a 200-character passphrase would otherwise be authenticated by its
@@ -23,18 +23,11 @@ class PasswordPolicy {
     if (password.length > maxLength) {
       problems.add('No more than $maxLength characters');
     }
-    if (!RegExp(r'[a-z]').hasMatch(password)) {
-      problems.add('One lowercase letter');
-    }
-    if (!RegExp(r'[A-Z]').hasMatch(password)) {
-      problems.add('One uppercase letter');
+    if (!RegExp(r'[A-Za-z]').hasMatch(password)) {
+      problems.add('One letter');
     }
     if (!RegExp(r'\d').hasMatch(password)) {
       problems.add('One number');
-    }
-    if (!RegExp(r'''[!@#$%^&*()_+\-=\[\]{};:'",.<>/?\\|`~]''')
-        .hasMatch(password)) {
-      problems.add('One symbol');
     }
     if (RegExp(r'\s').hasMatch(password)) {
       problems.add('No spaces or tabs');
