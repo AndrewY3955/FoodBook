@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 /// Compile-time configuration.
 ///
 /// Values arrive through --dart-define, never from a checked-in file.
@@ -18,6 +20,36 @@ class Env {
     'SUPABASE_PUBLISHABLE_KEY',
     defaultValue: String.fromEnvironment('SUPABASE_ANON_KEY'),
   );
+
+  /// Where the link in the signup / password-reset email sends the user.
+  /// Without it Supabase falls back to the project's "Site URL", which is
+  /// how users ended up on a GitHub 404. Override with
+  /// --dart-define=AUTH_REDIRECT_URL=... ; it must also be listed under
+  /// Authentication > URL Configuration > Redirect URLs in Supabase.
+  static const String _authRedirectOverride =
+      String.fromEnvironment('AUTH_REDIRECT_URL');
+
+  static const String mobileAuthRedirect = 'io.cookistrybook://login-callback';
+
+  static String? get authRedirectUrl {
+    if (_authRedirectOverride.isNotEmpty) return _authRedirectOverride;
+    // Keep the path: the app is served from /FoodBook/ on GitHub Pages and
+    // the allow-list entry is scoped to that path.
+    if (kIsWeb) {
+      final Uri u = Uri.base;
+      return Uri(
+        scheme: u.scheme,
+        host: u.host,
+        port: u.hasPort ? u.port : null,
+        path: u.path,
+      ).toString();
+    }
+    if (defaultTargetPlatform == TargetPlatform.android ||
+        defaultTargetPlatform == TargetPlatform.iOS) {
+      return mobileAuthRedirect;
+    }
+    return null;
+  }
 
   /// Hosts accepted for the external step-by-step video link. Empty
   /// means "any https host". Keeping it populated narrows the surface

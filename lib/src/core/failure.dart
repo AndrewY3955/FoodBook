@@ -8,10 +8,15 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 /// "pantry_items"` tells an attacker both the table name and that a
 /// policy exists on it.
 class Failure implements Exception {
-  const Failure(this.message, {this.isAuth = false, this.debug});
+  const Failure(this.message,
+      {this.isAuth = false, this.accountExists = false, this.debug});
 
   final String message;
   final bool isAuth;
+
+  /// Signup hit an address that already has an account. Deliberately
+  /// distinguishable so the UI can steer the user to sign-in or reset.
+  final bool accountExists;
 
   /// Never rendered. Present so logs keep the original cause.
   final Object? debug;
@@ -23,6 +28,10 @@ class Failure implements Exception {
     if (error is Failure) return error;
 
     if (error is AuthException) {
+      if (error.message.toLowerCase().contains('already registered')) {
+        return Failure(accountExistsMessage,
+            isAuth: true, accountExists: true, debug: error);
+      }
       return Failure(_authMessage(error), isAuth: true, debug: error);
     }
 
@@ -40,6 +49,10 @@ class Failure implements Exception {
     return Failure('Something went wrong. Please try again.', debug: error);
   }
 
+  static const String accountExistsMessage =
+      'An account with this email already exists. Sign in, verify your '
+      'email if you haven\'t yet, or reset your password.';
+
   static String _authMessage(AuthException error) {
     final String raw = error.message.toLowerCase();
     if (raw.contains('invalid login')) {
@@ -47,10 +60,13 @@ class Failure implements Exception {
       // password". The difference is an account-enumeration oracle.
       return 'That email and password combination was not recognised.';
     }
-    if (raw.contains('already registered')) {
-      return 'If that address can be used, a confirmation email is on its way.';
+    if (raw.contains('email not confirmed')) {
+      return 'Your email is not verified yet. Use "Resend confirmation email" below.';
     }
-    if (raw.contains('rate') || raw.contains('too many')) {
+    if (raw.contains('rate') ||
+        raw.contains('too many') ||
+        error.statusCode == '429' ||
+        (error is AuthApiException && error.code?.contains('rate_limit') == true)) {
       return 'Too many attempts. Wait a minute and try again.';
     }
     return 'Sign-in failed. Please try again.';

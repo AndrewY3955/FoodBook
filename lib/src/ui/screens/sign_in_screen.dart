@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -27,8 +29,47 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
   String? _error;
   String? _notice;
 
+  static const int _resendCooldownSeconds = 60;
+  Timer? _resendTimer;
+  int _resendLeft = 0;
+  String? _pendingEmail;
+
+  void _startResendCooldown() {
+    _resendTimer?.cancel();
+    setState(() => _resendLeft = _resendCooldownSeconds);
+    _resendTimer = Timer.periodic(const Duration(seconds: 1), (Timer t) {
+      if (!mounted) {
+        t.cancel();
+        return;
+      }
+      setState(() => _resendLeft--);
+      if (_resendLeft <= 0) t.cancel();
+    });
+  }
+
+  Future<void> _resend() async {
+    final String? email = _pendingEmail;
+    if (email == null || _resendLeft > 0) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await ref.read(authRepositoryProvider).resendConfirmation(email);
+      if (mounted) {
+        setState(() => _notice = 'Confirmation email sent again.');
+        _startResendCooldown();
+      }
+    } catch (error) {
+      if (mounted) setState(() => _error = Failure.from(error).message);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   @override
   void dispose() {
+    _resendTimer?.cancel();
     _email.dispose();
     _password.dispose();
     _name.dispose();
@@ -60,8 +101,10 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
           if (mounted) {
             setState(() {
               _notice = 'Check your email to confirm the account.';
+              _pendingEmail = _email.text.trim();
               _mode = _Mode.signIn;
             });
+            _startResendCooldown();
           }
         case _Mode.reset:
           await auth.sendPasswordReset(_email.text);
@@ -75,7 +118,18 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
           }
       }
     } catch (error) {
-      if (mounted) setState(() => _error = Failure.from(error).message);
+      if (mounted) {
+        final Failure failure = Failure.from(error);
+        setState(() {
+          _error = failure.message;
+          if (failure.accountExists) {
+            // Land on sign-in with the email kept, and offer a resend
+            // (for unverified accounts) and the reset flow.
+            _pendingEmail = _email.text.trim();
+            _mode = _Mode.signIn;
+          }
+        });
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -260,6 +314,15 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
           ),
 
           const SizedBox(height: 12),
+          if (_mode == _Mode.signIn && _pendingEmail != null)
+            TextButton(
+              onPressed: (_busy || _resendLeft > 0) ? null : _resend,
+              child: Text(
+                _resendLeft > 0
+                    ? 'Resend confirmation email (${_resendLeft}s)'
+                    : 'Resend confirmation email',
+              ),
+            ),
           if (_mode == _Mode.signIn)
             TextButton(
               onPressed:

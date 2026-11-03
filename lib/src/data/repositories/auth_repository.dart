@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/env.dart';
 import '../../core/failure.dart';
 import '../../core/security/input_sanitizer.dart';
 import '../../core/security/password_policy.dart';
@@ -62,10 +63,33 @@ class AuthRepository {
       // reads to create the profile and the personal library. Note that
       // user_metadata is client-writable — it is safe for a display name
       // and must never be used for authorisation.
-      await _auth.signUp(
+      final AuthResponse res = await _auth.signUp(
         email: cleanEmail,
         password: password,
+        emailRedirectTo: Env.authRedirectUrl,
         data: <String, dynamic>{'display_name': name},
+      );
+      // With email confirmation on, Supabase hides duplicates by returning
+      // a user with no identities instead of an error.
+      if (res.user != null && (res.user!.identities?.isEmpty ?? false)) {
+        throw const Failure(Failure.accountExistsMessage,
+            isAuth: true, accountExists: true);
+      }
+    } catch (error) {
+      throw Failure.from(error);
+    }
+  }
+
+  Future<void> resendConfirmation(String email) async {
+    final String? cleanEmail = InputSanitizer.email(email);
+    if (cleanEmail == null) {
+      throw const Failure('Enter a valid email address.', isAuth: true);
+    }
+    try {
+      await _auth.resend(
+        type: OtpType.signup,
+        email: cleanEmail,
+        emailRedirectTo: Env.authRedirectUrl,
       );
     } catch (error) {
       throw Failure.from(error);
@@ -78,7 +102,10 @@ class AuthRepository {
       throw const Failure('Enter a valid email address.', isAuth: true);
     }
     try {
-      await _auth.resetPasswordForEmail(cleanEmail);
+      await _auth.resetPasswordForEmail(
+        cleanEmail,
+        redirectTo: Env.authRedirectUrl,
+      );
     } catch (error) {
       throw Failure.from(error);
     }
