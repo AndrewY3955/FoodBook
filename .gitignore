@@ -6,13 +6,6 @@
 /build/
 /coverage/
 
-# Android generated files
-/android/build/
-/android/app/build/
-/android/app/debug/
-/android/app/profile/
-/android/app/release/
-
 # IDE and editor files
 .idea/
 *.iml

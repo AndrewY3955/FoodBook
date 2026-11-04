@@ -30,8 +30,9 @@ Read **VERIFICATION.md** before trusting any of it. It grades every claim.
 
 ## What is deliberately not here
 
-`android/`, `web/`, `windows/` — Flutter platform scaffolding used by this
-workspace. Keep the platform source/configuration files under version control;
+`web/`, `windows/` — Flutter platform scaffolding used by this
+workspace. (`android/` was removed; the app ships as a web build for now.)
+Keep the platform source/configuration files under version control;
 ignore only generated build output.
 
 `ios/` — building it requires macOS. Your iPhone route is the web build,

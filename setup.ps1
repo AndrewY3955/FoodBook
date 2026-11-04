@@ -53,8 +53,8 @@ Step 3 "Checking platform scaffolding"
 if (Test-Path ".\web") {
     Ok "platform folders already present; skipping"
 } else {
-    flutter create . --platforms=web,windows,android --project-name cookistrybook
-    Ok "android, web and windows scaffolding created"
+    flutter create . --platforms=web,windows --project-name cookistrybook
+    Ok "web and windows scaffolding created"
 }
 
 # ---------------------------------------------------------------------

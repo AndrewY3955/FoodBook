@@ -87,6 +87,8 @@ Planned in release order:
 
 Health data stays private to you and is deleted with your account.
 
+Later, when the app goes native: Android and iOS builds (the app is web-only for now, hosted on GitHub Pages) and live health-app sync.
+
 ---
 
 ## Made for everyone

@@ -137,9 +137,11 @@ Expect to fix things. See `VERIFICATION.md` for why.
 
 ### Platform prerequisites
 
-- **Android** — `minSdkVersion 23` for `flutter_secure_storage`'s
-  EncryptedSharedPreferences. Below that the plugin degrades silently, which is
-  the worst of both worlds.
+- **Android** — not in this repo for now (the app is hosted on the web). When
+  native mobile is revisited, run `flutter create . --platforms=android`, set
+  `minSdkVersion 23` for `flutter_secure_storage`'s EncryptedSharedPreferences
+  (below that the plugin degrades silently), and re-test the timer intent in
+  `lib/src/platform/native_timer.dart`.
 - **iOS/macOS** — Keychain entitlement; the OAuth redirect scheme
   `app.cookistrybook://login-callback` must be registered before enabling Apple or
   Google sign-in.
