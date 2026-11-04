@@ -74,8 +74,7 @@ class _LoadedState extends ConsumerState<_Loaded> {
   void _syncBar() {
     final RenderObject? box = _startKey.currentContext?.findRenderObject();
     if (box is! RenderBox || !box.attached) return;
-    final double bottom =
-        box.localToGlobal(Offset.zero).dy + box.size.height;
+    final double bottom = box.localToGlobal(Offset.zero).dy + box.size.height;
     final bool gone = bottom < kToolbarHeight;
     if (gone != _barVisible) setState(() => _barVisible = gone);
   }
@@ -679,7 +678,6 @@ class _IngredientPanel extends ConsumerWidget {
               ],
             ),
           ),
-
       ],
     );
   }

@@ -53,6 +53,7 @@ class RecipeDraft {
     this.accentColor,
     List<Diet>? diets,
     this.nutrition = Nutrition.empty,
+    this.albumId,
     List<DraftIngredient>? ingredients,
     List<DraftStep>? steps,
     List<String>? tags,
@@ -62,6 +63,7 @@ class RecipeDraft {
         tags = tags ?? <String>[];
 
   final String? id;
+  String? albumId;
   final List<Diet> diets;
   Nutrition nutrition;
   String title;
@@ -104,6 +106,7 @@ class RecipeDraft {
         accentColor: accentColor,
         diets: List<Diet>.of(diets),
         nutrition: nutrition,
+        albumId: albumId,
         ingredients: List<DraftIngredient>.of(ingredients),
         steps: List<DraftStep>.of(steps),
         tags: List<String>.of(tags),
@@ -119,8 +122,10 @@ class RecipeFilter {
     this.includePublic = false,
     this.cuisine,
     this.diets = const <Diet>[],
+    this.albumId,
   });
 
+  final String? albumId;
   final List<Diet> diets;
   final Cuisine? cuisine;
   final MealType? mealType;
@@ -149,6 +154,8 @@ class RecipeFilter {
     bool clearMealType = false,
     bool clearSeason = false,
     bool clearTag = false,
+    String? albumId,
+    bool clearAlbum = false,
   }) =>
       RecipeFilter(
         diets: diets ?? this.diets,
@@ -158,6 +165,7 @@ class RecipeFilter {
         tag: clearTag ? null : (tag ?? this.tag),
         includePublic: includePublic ?? this.includePublic,
         cuisine: clearCuisine ? null : (cuisine ?? this.cuisine),
+        albumId: clearAlbum ? null : (albumId ?? this.albumId),
       );
 }
 
@@ -173,7 +181,7 @@ class RecipeRepository {
       'id, library_id, title, description, meal_type, season, '
       'base_servings, prep_minutes, cook_minutes, cover_image_path, '
       'source_url, external_video_url, import_source, is_public, '
-      'forked_from_recipe_id, created_at, cuisine, theme, accent_color, '
+      'forked_from_recipe_id, created_at, album_id, cuisine, theme, accent_color, '
       'background_image_path, diets, calories, protein_g, carbs_g, fat_g, '
       'fiber_g, sugar_g, sodium_mg, '
       'recipe_tags(tags(name))';
@@ -209,6 +217,9 @@ class RecipeRepository {
         builder = builder.eq('library_id', libraryId);
       }
 
+      if (filter.albumId != null) {
+        builder = builder.eq('album_id', filter.albumId!);
+      }
       if (filter.mealType != null) {
         builder = builder.eq('meal_type', filter.mealType!.wire);
       }
@@ -357,6 +368,7 @@ class RecipeRepository {
           : InputSanitizer.importUrl(draft.sourceUrl!),
       'import_source': draft.importSource.wire,
       'is_public': draft.isPublic,
+      if (draft.albumId != null) 'album_id': draft.albumId,
       'cuisine': draft.cuisine?.wire,
       'theme': draft.theme.wire,
       'accent_color': draft.accentColor,

@@ -283,8 +283,10 @@ class Recipe {
     this.images = const <RecipeImage>[],
     this.diets = const <Diet>[],
     this.nutrition = Nutrition.empty,
+    this.albumId,
   });
 
+  final String? albumId;
   final List<Diet> diets;
 
   /// Per serving.
@@ -393,6 +395,7 @@ class Recipe {
               .toList(growable: false)
           : const <Diet>[],
       nutrition: Nutrition.fromJson(json),
+      albumId: _strOrNull(json['album_id']),
       images: (listOf<RecipeImage>(json['recipe_images'], RecipeImage.fromJson)
             ..sort((RecipeImage a, RecipeImage b) =>
                 a.sortOrder.compareTo(b.sortOrder)))
@@ -592,4 +595,20 @@ class ParsedImport {
       servings: _intOrNull(json['servings']),
     );
   }
+}
+
+/// A named category of recipes inside a cookbook.
+class RecipeAlbum {
+  const RecipeAlbum(
+      {required this.id, required this.libraryId, required this.name});
+
+  final String id;
+  final String libraryId;
+  final String name;
+
+  factory RecipeAlbum.fromJson(Map<String, dynamic> json) => RecipeAlbum(
+        id: _str(json['id']),
+        libraryId: _str(json['library_id']),
+        name: _str(json['name'], 'Album'),
+      );
 }

@@ -7,6 +7,7 @@ import '../../data/repositories/recipe_repository.dart';
 import '../../state/recipe_controllers.dart';
 import '../responsive/adaptive_scaffold.dart';
 import '../responsive/breakpoints.dart';
+import '../widgets/album_bar.dart';
 import '../widgets/category_slider.dart';
 import '../widgets/diet_chips.dart';
 import '../widgets/recipe_card.dart';
@@ -23,8 +24,7 @@ class RecipeViewModeController extends Notifier<bool?> {
   void set(bool grid) => state = grid;
 }
 
-final NotifierProvider<RecipeViewModeController, bool?>
-    recipeGridModeProvider =
+final NotifierProvider<RecipeViewModeController, bool?> recipeGridModeProvider =
     NotifierProvider<RecipeViewModeController, bool?>(
   RecipeViewModeController.new,
 );
@@ -59,6 +59,7 @@ class RecipeBoxScreen extends ConsumerWidget {
             Column(
               children: <Widget>[
                 _FilterBar(grid: grid),
+                const AlbumBar(),
                 Expanded(
                   child: recipes.when(
                     loading: () =>
@@ -246,9 +247,8 @@ class _FilterBarState extends ConsumerState<_FilterBar> {
                     ),
                   ],
                   selected: <bool>{widget.grid},
-                  onSelectionChanged: (Set<bool> v) => ref
-                      .read(recipeGridModeProvider.notifier)
-                      .set(v.first),
+                  onSelectionChanged: (Set<bool> v) =>
+                      ref.read(recipeGridModeProvider.notifier).set(v.first),
                 ),
               ],
             ),

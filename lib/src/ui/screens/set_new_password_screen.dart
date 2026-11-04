@@ -90,8 +90,8 @@ class _SetNewPasswordScreenState extends ConsumerState<SetNewPasswordScreen> {
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child: Text(_error!,
-                      style:
-                          TextStyle(color: Theme.of(context).colorScheme.error)),
+                      style: TextStyle(
+                          color: Theme.of(context).colorScheme.error)),
                 ),
               const SizedBox(height: 16),
               FilledButton(

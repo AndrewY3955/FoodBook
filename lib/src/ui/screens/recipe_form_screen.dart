@@ -9,6 +9,7 @@ import '../../core/security/input_sanitizer.dart';
 import '../../data/models/enums.dart';
 import '../../data/models/models.dart';
 import '../../data/repositories/recipe_repository.dart';
+import '../../state/album_controllers.dart';
 import '../../state/library_controller.dart';
 import '../../state/pantry_controllers.dart';
 import '../../state/providers.dart';
@@ -153,6 +154,9 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
   @override
   Widget build(BuildContext context) {
     final RecipeDraft draft = ref.watch(recipeFormProvider);
+    ref.listen<RecipeDraft>(recipeFormProvider, (_, __) {
+      if (_error != null) setState(() => _error = null);
+    });
 
     return Scaffold(
       appBar: AppBar(
@@ -366,6 +370,37 @@ class _BasicsPane extends ConsumerWidget {
           textCapitalization: TextCapitalization.sentences,
           onChanged: controller.setDescription,
         ),
+        const SizedBox(height: 8),
+        Builder(builder: (BuildContext context) {
+          final List<RecipeAlbum> albums =
+              ref.watch(albumsProvider).valueOrNull ?? const <RecipeAlbum>[];
+          if (albums.isEmpty) return const SizedBox.shrink();
+          final bool known =
+              albums.any((RecipeAlbum a) => a.id == draft.albumId);
+          if (!known) {
+            final String? wanted = ref.read(recipeFilterProvider).albumId;
+            final String fallback =
+                albums.any((RecipeAlbum a) => a.id == wanted)
+                    ? wanted!
+                    : albums.first.id;
+            WidgetsBinding.instance
+                .addPostFrameCallback((_) => controller.setAlbum(fallback));
+          }
+          return DropdownButtonFormField<String>(
+            key: ValueKey<String?>(known ? draft.albumId : null),
+            initialValue: known ? draft.albumId : null,
+            isExpanded: true,
+            decoration: const InputDecoration(labelText: 'Album'),
+            items: <DropdownMenuItem<String>>[
+              for (final RecipeAlbum a in albums)
+                DropdownMenuItem<String>(
+                  value: a.id,
+                  child: Text(a.name, overflow: TextOverflow.ellipsis),
+                ),
+            ],
+            onChanged: controller.setAlbum,
+          );
+        }),
         const SizedBox(height: 8),
         DropdownButtonFormField<MealType>(
           initialValue: draft.mealType,
@@ -643,67 +678,75 @@ class _IngredientRow extends ConsumerWidget {
         ref.read(recipeFormProvider.notifier);
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          SizedBox(
-            width: 68,
-            child: TextFormField(
-              initialValue: QuantityFormat.amount(item.quantity),
-              decoration:
-                  const InputDecoration(isDense: true, labelText: 'Qty'),
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              onChanged: (String v) {
-                final double? parsed = InputSanitizer.quantity(v);
-                if (parsed == null) return;
-                item.quantity = parsed;
-                controller.updateIngredient(index, item);
-              },
-            ),
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: Text(
+                  item.name,
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+              ),
+              IconButton(
+                tooltip: item.isOptional ? 'Optional' : 'Required',
+                icon: Icon(
+                  item.isOptional ? Icons.star_border : Icons.star,
+                  size: 20,
+                ),
+                onPressed: () {
+                  item.isOptional = !item.isOptional;
+                  controller.updateIngredient(index, item);
+                },
+              ),
+              IconButton(
+                tooltip: 'Remove ingredient',
+                icon: const Icon(Icons.close, size: 20),
+                onPressed: () => controller.removeIngredient(index),
+              ),
+            ],
           ),
-          const SizedBox(width: 6),
-          SizedBox(
-            width: 110,
-            child: DropdownButtonFormField<MeasureUnit>(
-              initialValue: item.unit,
-              decoration: const InputDecoration(isDense: true),
-              items: MeasureUnit.values
-                  .map((MeasureUnit u) => DropdownMenuItem<MeasureUnit>(
-                        value: u,
-                        child: Text(u.label.isEmpty ? 'each' : u.label),
-                      ))
-                  .toList(growable: false),
-              onChanged: (MeasureUnit? u) {
-                if (u == null) return;
-                item.unit = u;
-                controller.updateIngredient(index, item);
-              },
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(top: 10),
-              child: Text(item.name),
-            ),
-          ),
-          IconButton(
-            tooltip: item.isOptional ? 'Optional' : 'Required',
-            icon: Icon(
-              item.isOptional ? Icons.star_border : Icons.star,
-              size: 20,
-            ),
-            onPressed: () {
-              item.isOptional = !item.isOptional;
-              controller.updateIngredient(index, item);
-            },
-          ),
-          IconButton(
-            tooltip: 'Remove ingredient',
-            icon: const Icon(Icons.close, size: 20),
-            onPressed: () => controller.removeIngredient(index),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              SizedBox(
+                width: 84,
+                child: TextFormField(
+                  initialValue: QuantityFormat.amount(item.quantity),
+                  decoration:
+                      const InputDecoration(isDense: true, labelText: 'Qty'),
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  onChanged: (String v) {
+                    final double? parsed = InputSanitizer.quantity(v);
+                    if (parsed == null) return;
+                    item.quantity = parsed;
+                    controller.updateIngredient(index, item);
+                  },
+                ),
+              ),
+              const SizedBox(width: 8),
+              SizedBox(
+                width: 120,
+                child: DropdownButtonFormField<MeasureUnit>(
+                  initialValue: item.unit,
+                  decoration: const InputDecoration(isDense: true),
+                  items: MeasureUnit.values
+                      .map((MeasureUnit u) => DropdownMenuItem<MeasureUnit>(
+                            value: u,
+                            child: Text(u.label.isEmpty ? 'each' : u.label),
+                          ))
+                      .toList(growable: false),
+                  onChanged: (MeasureUnit? u) {
+                    if (u == null) return;
+                    item.unit = u;
+                    controller.updateIngredient(index, item);
+                  },
+                ),
+              ),
+            ],
           ),
         ],
       ),

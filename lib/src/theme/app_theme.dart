@@ -76,8 +76,8 @@ class AppTheme {
       fontFamily: 'Inter',
     );
     final TextTheme t = seeded.textTheme;
-    TextStyle serif(TextStyle? s, {double? size}) => (s ?? const TextStyle())
-        .copyWith(
+    TextStyle serif(TextStyle? s, {double? size}) =>
+        (s ?? const TextStyle()).copyWith(
           fontFamily: 'Fraunces',
           fontWeight: FontWeight.w600,
           fontSize: size,
@@ -223,7 +223,6 @@ class AppTheme {
       ),
     );
   }
-
 
   /// Cooking Mode targets. 96 px minimum height, because the hand that
   /// presses this is holding a knife, is wet, or is a forearm.

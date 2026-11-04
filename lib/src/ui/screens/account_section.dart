@@ -30,7 +30,8 @@ class AccountSection extends ConsumerWidget {
           subtitle: const Text(
               'We email you a confirmation link; the password only changes '
               'after you open it.'),
-          onTap: email == null ? null : () => _changePassword(context, ref, email),
+          onTap:
+              email == null ? null : () => _changePassword(context, ref, email),
         ),
         ListTile(
           contentPadding: EdgeInsets.zero,

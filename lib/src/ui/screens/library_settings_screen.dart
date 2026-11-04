@@ -19,21 +19,21 @@ class LibrarySettingsScreen extends ConsumerWidget {
     if (library == null) {
       return Scaffold(
         appBar: AppBar(title: const Text('Library settings')),
-          body: const ContentWidth(
-            maxWidth: 720,
-            child: Padding(
-              padding: EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text('No active library is selected.'),
-                  SizedBox(height: 24),
-                  AccountSection(),
-                ],
-              ),
+        body: const ContentWidth(
+          maxWidth: 720,
+          child: Padding(
+            padding: EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text('No active library is selected.'),
+                SizedBox(height: 24),
+                AccountSection(),
+              ],
             ),
           ),
-        );
+        ),
+      );
     }
 
     final AsyncValue<List<Profile>> members =
@@ -116,11 +116,13 @@ class LibrarySettingsScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 24),
             const Divider(),
+            Text('Your cookbooks',
+                style: Theme.of(context).textTheme.titleLarge),
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.add_circle_outline),
               title: const Text('Create another cookbook'),
-              onTap: () => _create(context, ref),
+              onTap: () => showCreateCookbook(context, ref),
             ),
             ListTile(
               contentPadding: EdgeInsets.zero,
@@ -128,6 +130,9 @@ class LibrarySettingsScreen extends ConsumerWidget {
               title: const Text('Join another library with a code'),
               onTap: () => showJoinWithCodeDialog(context, ref),
             ),
+            const SizedBox(height: 12),
+            Text('Leave or delete this cookbook',
+                style: Theme.of(context).textTheme.titleLarge),
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.exit_to_app),
@@ -159,7 +164,8 @@ class LibrarySettingsScreen extends ConsumerWidget {
     );
   }
 
-  static Future<void> _create(BuildContext context, WidgetRef ref) async {
+  static Future<void> showCreateCookbook(
+      BuildContext context, WidgetRef ref) async {
     final TextEditingController name = TextEditingController();
     final String? value = await showDialog<String>(
       context: context,
@@ -178,8 +184,7 @@ class LibrarySettingsScreen extends ConsumerWidget {
             child: const Text('Cancel'),
           ),
           FilledButton(
-            onPressed: () =>
-                Navigator.of(dialogContext).pop(name.text.trim()),
+            onPressed: () => Navigator.of(dialogContext).pop(name.text.trim()),
             child: const Text('Create'),
           ),
         ],
@@ -365,7 +370,8 @@ class LibrarySettingsScreen extends ConsumerWidget {
     final bool confirmed = await showDialog<bool>(
           context: context,
           builder: (BuildContext dialogContext) => AlertDialog(
-            title: Text(alone ? 'Delete this cookbook?' : 'Leave this library?'),
+            title:
+                Text(alone ? 'Delete this cookbook?' : 'Leave this library?'),
             content: Text(
               alone
                   ? 'You are the only member, so leaving deletes "${library.name}" '

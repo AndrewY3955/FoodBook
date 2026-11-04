@@ -30,10 +30,11 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   int _index = 0;
 
   static const List<String> _titles = <String>[
-    'Recipe Box',
     'Discover',
-    'Planner & Pantry',
+    'Recipe Box',
+    'Meal Plan',
     'Shopping List',
+    'Cupboard',
   ];
 
   @override
@@ -81,17 +82,17 @@ class _HomeShellState extends ConsumerState<HomeShell> {
           ],
           destinations: <AdaptiveDestination>[
             const AdaptiveDestination(
-              label: 'Recipes',
-              icon: Icons.menu_book_outlined,
-              selectedIcon: Icons.menu_book,
-            ),
-            const AdaptiveDestination(
               label: 'Discover',
               icon: Icons.explore_outlined,
               selectedIcon: Icons.explore,
             ),
             const AdaptiveDestination(
-              label: 'Plan & Pantry',
+              label: 'Recipes',
+              icon: Icons.menu_book_outlined,
+              selectedIcon: Icons.menu_book,
+            ),
+            const AdaptiveDestination(
+              label: 'Plan',
               icon: Icons.calendar_month_outlined,
               selectedIcon: Icons.calendar_month,
             ),
@@ -101,14 +102,20 @@ class _HomeShellState extends ConsumerState<HomeShell> {
               selectedIcon: Icons.shopping_basket,
               badgeCount: unchecked,
             ),
+            const AdaptiveDestination(
+              label: 'Cupboard',
+              icon: Icons.kitchen_outlined,
+              selectedIcon: Icons.kitchen,
+            ),
           ],
           body: IndexedStack(
             index: _index,
             children: const <Widget>[
-              RecipeBoxScreen(),
               DiscoverScreen(),
-              PantryPlannerScreen(),
+              RecipeBoxScreen(),
+              PlannerScreen(),
               ShoppingListScreen(),
+              PantryScreen(),
             ],
           ),
         );
@@ -231,6 +238,8 @@ class _NoLibraryState extends ConsumerState<_NoLibrary> {
 class LibrarySwitcher extends ConsumerWidget {
   const LibrarySwitcher({super.key});
 
+  static const String _newCookbook = '__new__';
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final List<Library> libraries =
@@ -245,14 +254,20 @@ class LibrarySwitcher extends ConsumerWidget {
       return PopupMenuButton<String>(
         tooltip: active?.name ?? 'Cookbook',
         icon: const Icon(Icons.menu_book_outlined),
-        onSelected: (String id) =>
-            ref.read(activeLibraryProvider.notifier).select(id),
-        itemBuilder: (BuildContext context) => libraries
-            .map((Library k) => PopupMenuItem<String>(
-                  value: k.id,
-                  child: Text(k.name),
-                ))
-            .toList(growable: false),
+        onSelected: (String id) => id == _newCookbook
+            ? LibrarySettingsScreen.showCreateCookbook(context, ref)
+            : ref.read(activeLibraryProvider.notifier).select(id),
+        itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+          ...libraries.map((Library k) => PopupMenuItem<String>(
+                value: k.id,
+                child: Text(k.name),
+              )),
+          const PopupMenuDivider(),
+          const PopupMenuItem<String>(
+            value: _newCookbook,
+            child: Text('New cookbook'),
+          ),
+        ],
       );
     }
 
@@ -264,14 +279,23 @@ class LibrarySwitcher extends ConsumerWidget {
         prefixIcon: Icon(Icons.menu_book_outlined),
         contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       ),
-      items: libraries
-          .map((Library k) => DropdownMenuItem<String>(
-                value: k.id,
-                child: Text(k.name, overflow: TextOverflow.ellipsis),
-              ))
-          .toList(growable: false),
+      items: <DropdownMenuItem<String>>[
+        ...libraries.map((Library k) => DropdownMenuItem<String>(
+              value: k.id,
+              child: Text(k.name, overflow: TextOverflow.ellipsis),
+            )),
+        const DropdownMenuItem<String>(
+          value: _newCookbook,
+          child: Text('+ New cookbook'),
+        ),
+      ],
       onChanged: (String? id) {
-        if (id != null) ref.read(activeLibraryProvider.notifier).select(id);
+        if (id == null) return;
+        if (id == _newCookbook) {
+          LibrarySettingsScreen.showCreateCookbook(context, ref);
+        } else {
+          ref.read(activeLibraryProvider.notifier).select(id);
+        }
       },
     );
   }

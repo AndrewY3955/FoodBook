@@ -66,7 +66,8 @@ class Failure implements Exception {
     if (raw.contains('rate') ||
         raw.contains('too many') ||
         error.statusCode == '429' ||
-        (error is AuthApiException && error.code?.contains('rate_limit') == true)) {
+        (error is AuthApiException &&
+            error.code?.contains('rate_limit') == true)) {
       return 'Too many attempts. Wait a minute and try again.';
     }
     return 'Sign-in failed. Please try again.';

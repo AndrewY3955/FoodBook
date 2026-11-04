@@ -29,23 +29,35 @@ class _Tint {
 }
 
 const Map<MealType, _Tint> _lightTints = <MealType, _Tint>{
-  MealType.breakfast: _Tint(Color(0xFFFCEBC8), Color(0xFF4A2E05), Icons.free_breakfast_outlined),
-  MealType.lunch: _Tint(Color(0xFFE3EBD3), Color(0xFF26361A), Icons.lunch_dining_outlined),
-  MealType.dinner: _Tint(Color(0xFFF7DDD0), Color(0xFF4F1D0A), Icons.dinner_dining_outlined),
-  MealType.snack: _Tint(Color(0xFFEBE0F0), Color(0xFF35203F), Icons.cookie_outlined),
-  MealType.dessert: _Tint(Color(0xFFF9DCE3), Color(0xFF50182B), Icons.cake_outlined),
+  MealType.breakfast: _Tint(
+      Color(0xFFFCEBC8), Color(0xFF4A2E05), Icons.free_breakfast_outlined),
+  MealType.lunch:
+      _Tint(Color(0xFFE3EBD3), Color(0xFF26361A), Icons.lunch_dining_outlined),
+  MealType.dinner:
+      _Tint(Color(0xFFF7DDD0), Color(0xFF4F1D0A), Icons.dinner_dining_outlined),
+  MealType.snack:
+      _Tint(Color(0xFFEBE0F0), Color(0xFF35203F), Icons.cookie_outlined),
+  MealType.dessert:
+      _Tint(Color(0xFFF9DCE3), Color(0xFF50182B), Icons.cake_outlined),
 };
 
 const Map<MealType, _Tint> _darkTints = <MealType, _Tint>{
-  MealType.breakfast: _Tint(Color(0xFF3B2F18), Color(0xFFF6E3BC), Icons.free_breakfast_outlined),
-  MealType.lunch: _Tint(Color(0xFF28321F), Color(0xFFD9E6C6), Icons.lunch_dining_outlined),
-  MealType.dinner: _Tint(Color(0xFF3C241A), Color(0xFFF5D8C8), Icons.dinner_dining_outlined),
-  MealType.snack: _Tint(Color(0xFF32283A), Color(0xFFE6D8EE), Icons.cookie_outlined),
-  MealType.dessert: _Tint(Color(0xFF3A222A), Color(0xFFF5D6DF), Icons.cake_outlined),
+  MealType.breakfast: _Tint(
+      Color(0xFF3B2F18), Color(0xFFF6E3BC), Icons.free_breakfast_outlined),
+  MealType.lunch:
+      _Tint(Color(0xFF28321F), Color(0xFFD9E6C6), Icons.lunch_dining_outlined),
+  MealType.dinner:
+      _Tint(Color(0xFF3C241A), Color(0xFFF5D8C8), Icons.dinner_dining_outlined),
+  MealType.snack:
+      _Tint(Color(0xFF32283A), Color(0xFFE6D8EE), Icons.cookie_outlined),
+  MealType.dessert:
+      _Tint(Color(0xFF3A222A), Color(0xFFF5D6DF), Icons.cake_outlined),
 };
 
 _Tint _tintFor(BuildContext context, MealType meal) =>
-    (Theme.of(context).brightness == Brightness.dark ? _darkTints : _lightTints)[meal]!;
+    (Theme.of(context).brightness == Brightness.dark
+        ? _darkTints
+        : _lightTints)[meal]!;
 
 /// "35 min · Serves 4". Essential facts wrap rather than truncate.
 String recipeMeta(Recipe recipe) {

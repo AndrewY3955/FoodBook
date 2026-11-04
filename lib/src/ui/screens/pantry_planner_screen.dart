@@ -11,62 +11,26 @@ import '../../state/recipe_controllers.dart';
 import '../responsive/breakpoints.dart';
 import 'recipe_detail_screen.dart';
 
-/// Planner and pantry.
-///
-///   phone    two tabs
-///   tablet   planner above, pantry below
-///   desktop  wide horizontal calendar beside the pantry column
-class PantryPlannerScreen extends ConsumerWidget {
-  const PantryPlannerScreen({super.key});
+/// The weekly meal planner, a screen of its own.
+class PlannerScreen extends StatelessWidget {
+  const PlannerScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return ResponsiveBuilder(
-      builder: (BuildContext context, LayoutScope scope) {
-        if (scope.isPhone) {
-          return const DefaultTabController(
-            length: 2,
-            child: Column(
-              children: <Widget>[
-                TabBar(
-                  tabs: <Widget>[
-                    Tab(text: 'This week'),
-                    Tab(text: 'Cupboard & ideas'),
-                  ],
-                ),
-                Expanded(
-                  child: TabBarView(
-                    children: <Widget>[
-                      _PlannerPane(),
-                      _PantryPane(),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
+  Widget build(BuildContext context) => const _PlannerPane();
+}
 
-        if (scope.isTablet) {
-          return const Column(
-            children: <Widget>[
-              Expanded(flex: 5, child: _PlannerPane()),
-              Divider(height: 1),
-              Expanded(flex: 4, child: _PantryPane()),
-            ],
-          );
-        }
+/// The cupboard and "what can I cook?" suggestions, a screen of its own.
+class PantryScreen extends StatelessWidget {
+  const PantryScreen({super.key});
 
-        return const Row(
-          children: <Widget>[
-            Expanded(flex: 7, child: _PlannerPane()),
-            VerticalDivider(width: 1),
-            Expanded(flex: 4, child: _PantryPane()),
-          ],
-        );
-      },
-    );
-  }
+  @override
+  Widget build(BuildContext context) => Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 720),
+          child: const _PantryPane(),
+        ),
+      );
 }
 
 class _PlannerPane extends ConsumerWidget {
@@ -384,26 +348,19 @@ class _PantryPane extends ConsumerWidget {
                 for (final PantryMatch m in list)
                   ListTile(
                     contentPadding: EdgeInsets.zero,
-                    leading: CircleAvatar(
-                      backgroundColor: m.isCookable
+                    leading: Icon(
+                      m.isCookable
+                          ? Icons.check_circle
+                          : Icons.radio_button_unchecked,
+                      color: m.isCookable
                           ? Colors.green.shade700
-                          : theme.colorScheme.secondaryContainer,
-                      child: Text(
-                        '${m.matchPct}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: m.isCookable
-                              ? Colors.white
-                              : theme.colorScheme.onSecondaryContainer,
-                        ),
-                      ),
+                          : theme.colorScheme.outline,
                     ),
                     title: Text(m.title),
                     subtitle: Text(
                       m.isCookable
                           ? 'You have everything'
-                          : 'Missing or short on ${m.missingCount} of ${m.requiredCount}',
+                          : 'You have ${m.matchedCount} of ${m.requiredCount} ingredients',
                     ),
                     onTap: () => Navigator.of(context).push(
                       MaterialPageRoute<void>(

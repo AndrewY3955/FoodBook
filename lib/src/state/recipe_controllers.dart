@@ -11,7 +11,11 @@ import 'providers.dart';
 /// that changing a chip does not rebuild the repository provider.
 class RecipeFilterController extends Notifier<RecipeFilter> {
   @override
-  RecipeFilter build() => const RecipeFilter();
+  RecipeFilter build() {
+    // Albums and filters belong to one cookbook; start fresh in another.
+    ref.watch(activeLibraryIdProvider);
+    return const RecipeFilter();
+  }
 
   void setMealType(MealType? value) {
     state = value == null
@@ -29,6 +33,12 @@ class RecipeFilterController extends Notifier<RecipeFilter> {
     state = value == null
         ? state.copyWith(clearTag: true)
         : state.copyWith(tag: value);
+  }
+
+  void setAlbum(String? id) {
+    state = id == null
+        ? state.copyWith(clearAlbum: true)
+        : state.copyWith(albumId: id);
   }
 
   void setQuery(String value) => state = state.copyWith(query: value);
@@ -65,7 +75,7 @@ class RecipeFilterController extends Notifier<RecipeFilter> {
     setSeason(byMonth[now.month] ?? Season.allYear);
   }
 
-  void clear() => state = const RecipeFilter();
+  void clear() => state = RecipeFilter(albumId: state.albumId);
 }
 
 final NotifierProvider<RecipeFilterController, RecipeFilter>
@@ -164,6 +174,7 @@ class RecipeFormController extends Notifier<RecipeDraft> {
       accentColor: recipe.accentColor,
       diets: List<Diet>.of(recipe.diets),
       nutrition: recipe.nutrition,
+      albumId: recipe.albumId,
       ingredients: recipe.sortedIngredients
           .map((RecipeIngredient i) => DraftIngredient(
                 ingredientId: i.ingredientId,
@@ -203,6 +214,11 @@ class RecipeFormController extends Notifier<RecipeDraft> {
   }
 
   void _touch() => state = state.snapshot();
+
+  void setAlbum(String? id) {
+    state.albumId = id;
+    _touch();
+  }
 
   void setCuisine(Cuisine? value) {
     state.cuisine = value;
