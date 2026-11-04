@@ -187,6 +187,20 @@ API tests: `tooling/recipe-workflow-tests` (run the `*.test.mjs` files with
 against a local stack; `tooling/ui-personas/personas.mjs [n]` drives the web
 build in headless Edge (set `PHOTO_DIR` for fixtures; Edge path is in-script).
 
+## Nutrition notes
+
+Migration 0018 adds label columns and `recipes.micros` (jsonb for extra vitamins and minerals), plus `nutrition_goals` and `food_log`. Both are owner-only under RLS and cascade-delete with the auth user, so account deletion removes them. Estimates come from the built-in whole-food table (`nutrition_db.dart`, `nutrition_micros.dart`) via `NutritionEstimator`; they are approximate.
+
+## Roadmap (planned, not built)
+
+Each phase gets its own numbered migration (0019+), owner-only RLS, unit tests for parsers and calculators, and a live check after deploy.
+
+- **Phase 0, trust:** `source` on foods (usda/user/estimate), USDA FoodData Central cache, allergen and diet conflict warnings, in-app privacy page, full data export and delete, CI migration checks, size caps on every jsonb column.
+- **Phase 1:** `custom_foods`, `saved_meals`/`saved_meal_items`, drink logging (water, caffeine, sugar, alcohol as standard drinks).
+- **Phase 2:** `body_metrics`, `activity_log`, health import. The web build cannot read Apple Health or Health Connect, so it parses export files on the device (Apple `export.xml`, Google/Fitbit/Garmin CSV). Imports are idempotent via a unique `(user_id, source, external_id)` index. Live sync needs a native build using the `health` package.
+- **Phase 3:** plan-to-diary sync (never log as eaten without a tap), gap suggestions (pure function over goals, diary and pantry), micronutrient trend insights with cautious wording.
+- **Phase 4:** opt-in reminders (off by default, quiet hours), CSV/PDF/JSON export, JSON restore and MyFitnessPal-style CSV import with a mapping preview and row validation.
+
 ## Known trade-offs
 
 **Forks and account deletion.** A fork copies text, ingredient notes, cuisine,

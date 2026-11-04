@@ -75,6 +75,20 @@ Settings (the gear at the top) holds your cookbook name, members and invitations
 
 ---
 
+## Coming next
+
+Planned in release order:
+
+1. **Trust and quality:** a verified food database (USDA), "estimate vs verified" badges, allergen and diet warnings, a plain-language "what we store" page, full data export and delete.
+2. **Faster logging:** your own custom foods, saved meals ("my usual breakfast"), and drink tracking from water to soda, caffeine and alcohol with a daily water goal.
+3. **Body and activity:** weight and body tracking with trend lines and a goal date, an exercise log, and import from the health app already on your device (export file first; live Apple Health and Health Connect sync in a mobile app later).
+4. **Smarter planning:** see each planned day's calories and macros, log planned meals with a tap, get "you're short on protein, try these" suggestions from your pantry, and spot nutrients you are consistently low on.
+5. **Reminders and portability:** gentle, optional reminders (all off by default), CSV and PDF reports, and backup and restore.
+
+Health data stays private to you and is deleted with your account.
+
+---
+
 ## Made for everyone
 
 Large tap targets, clear text labels on every important button, support for
