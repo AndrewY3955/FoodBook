@@ -207,6 +207,59 @@ void main() {
     });
   });
 
+  group('weekly weight goals', () {
+    test('converts loss and gain rates into daily calorie adjustments', () {
+      expect(
+        dailyCalorieGoal(
+          maintenanceKcal: 2500,
+          goal: WeightGoal.lose,
+          weeklyChangeKg: 1,
+        ),
+        closeTo(1400, 1e-9),
+      );
+      expect(
+        dailyCalorieGoal(
+          maintenanceKcal: 2500,
+          goal: WeightGoal.gain,
+          weeklyChangeKg: 0.5,
+        ),
+        closeTo(3050, 1e-9),
+      );
+      expect(
+        dailyCalorieGoal(
+          maintenanceKcal: 2500,
+          goal: WeightGoal.maintain,
+        ),
+        2500,
+      );
+    });
+
+    test('rejects invalid calorie goals and weekly amounts', () {
+      expect(
+        () => dailyCalorieGoal(
+          maintenanceKcal: 0,
+          goal: WeightGoal.maintain,
+        ),
+        throwsA(isA<EnergyInputError>()),
+      );
+      expect(
+        () => dailyCalorieGoal(
+          maintenanceKcal: 2500,
+          goal: WeightGoal.lose,
+        ),
+        throwsA(isA<EnergyInputError>()),
+      );
+      expect(
+        () => dailyCalorieGoal(
+          maintenanceKcal: 2500,
+          goal: WeightGoal.gain,
+          weeklyChangeKg: -1,
+        ),
+        throwsA(isA<EnergyInputError>()),
+      );
+    });
+  });
+
   group('validation', () {
     test('rejects invalid measurements', () {
       EnergyProfile make({

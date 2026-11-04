@@ -107,6 +107,43 @@ enum ActivityLevel {
   final String description;
 }
 
+enum WeightGoal { maintain, lose, gain }
+
+/// Converts a weekly weight-change goal into a daily calorie target.
+///
+/// Uses the approximate energy density of [kDefaultKcalPerKg]. This is a
+/// static estimate and does not model metabolic adaptation over time.
+double dailyCalorieGoal({
+  required double maintenanceKcal,
+  required WeightGoal goal,
+  double weeklyChangeKg = 0,
+}) {
+  _finite(maintenanceKcal, 'Maintenance calories');
+  _finite(weeklyChangeKg, 'Weekly weight change');
+  if (maintenanceKcal <= 0) {
+    throw const EnergyInputError('Maintenance calories must be above zero.');
+  }
+  if (goal != WeightGoal.maintain && weeklyChangeKg <= 0) {
+    throw const EnergyInputError(
+        'Weekly weight change must be above zero for loss or gain.');
+  }
+  if (weeklyChangeKg < 0) {
+    throw const EnergyInputError('Weekly weight change cannot be negative.');
+  }
+  final double dailyAdjustment = weeklyChangeKg * kDefaultKcalPerKg / 7;
+  final double target = switch (goal) {
+    WeightGoal.maintain => maintenanceKcal,
+    WeightGoal.lose => maintenanceKcal - dailyAdjustment,
+    WeightGoal.gain => maintenanceKcal + dailyAdjustment,
+  };
+  _finite(target, 'Daily calorie target');
+  if (target <= 0) {
+    throw const EnergyInputError(
+        'This weekly loss goal results in a daily target at or below zero.');
+  }
+  return target;
+}
+
 class EnergyProfile {
   EnergyProfile._({
     required this.sex,

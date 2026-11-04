@@ -20,9 +20,11 @@ class _MaintenanceCalculatorState extends State<MaintenanceCalculator> {
   WeightUnit _unit = WeightUnit.lb;
   HeightUnit _heightUnit = HeightUnit.feetInches;
   ActivityLevel _activity = ActivityLevel.sedentary;
+  WeightGoal _goal = WeightGoal.maintain;
 
   final TextEditingController _age = TextEditingController();
   final TextEditingController _weight = TextEditingController();
+  final TextEditingController _weeklyChange = TextEditingController();
   final TextEditingController _cm = TextEditingController();
   final TextEditingController _ft = TextEditingController();
   final TextEditingController _inch = TextEditingController();
@@ -31,6 +33,7 @@ class _MaintenanceCalculatorState extends State<MaintenanceCalculator> {
   void dispose() {
     _age.dispose();
     _weight.dispose();
+    _weeklyChange.dispose();
     _cm.dispose();
     _ft.dispose();
     _inch.dispose();
@@ -83,11 +86,16 @@ class _MaintenanceCalculatorState extends State<MaintenanceCalculator> {
   void _changeUnits(WeightUnit next) {
     if (next == _unit) return;
     final double? weight = double.tryParse(_weight.text.trim());
+    final double? weeklyChange = double.tryParse(_weeklyChange.text.trim());
     final double? heightCm = _currentHeightCm();
     setState(() {
       if (weight != null) {
         final double kg = weightToKg(weight, _unit);
         _weight.text = fmtNum(next == WeightUnit.kg ? kg : kg / kgPerLb);
+      }
+      if (weeklyChange != null) {
+        final double kg = weightToKg(weeklyChange, _unit);
+        _weeklyChange.text = fmtNum(next == WeightUnit.kg ? kg : kg / kgPerLb);
       }
       _unit = next;
       _heightUnit =
@@ -136,12 +144,37 @@ class _MaintenanceCalculatorState extends State<MaintenanceCalculator> {
     final TextTheme text = Theme.of(context).textTheme;
     FormulaEstimate? estimate;
     String? estimateMessage;
+    String? goalMessage;
+    int? goalCalories;
     try {
       estimate = formulaTdee(_readProfile());
+      if (_goal == WeightGoal.maintain) {
+        goalCalories = roundKcal(estimate.tdee, step: 1);
+      } else {
+        final double? weeklyChange = double.tryParse(_weeklyChange.text.trim());
+        if (weeklyChange == null) {
+          final String changeType = _goal == WeightGoal.lose ? 'loss' : 'gain';
+          goalMessage =
+              'Enter your weekly $changeType to calculate a daily calorie target.';
+        } else {
+          goalCalories = roundKcal(
+            dailyCalorieGoal(
+              maintenanceKcal: estimate.tdee,
+              goal: _goal,
+              weeklyChangeKg: weightToKg(weeklyChange, _unit),
+            ),
+            step: 1,
+          );
+        }
+      }
     } on EnergyInputError catch (error) {
-      estimateMessage = error.message.startsWith('Enter your ')
-          ? 'Enter your age, weight, and height to see an estimate.'
-          : error.message;
+      if (estimate == null) {
+        estimateMessage = error.message.startsWith('Enter your ')
+            ? 'Enter your age, weight, and height to see an estimate.'
+            : error.message;
+      } else {
+        goalMessage = error.message;
+      }
     }
 
     return Card(
@@ -210,13 +243,42 @@ class _MaintenanceCalculatorState extends State<MaintenanceCalculator> {
             },
           ),
           const SizedBox(height: 8),
+          SegmentedButton<WeightGoal>(
+            segments: const <ButtonSegment<WeightGoal>>[
+              ButtonSegment<WeightGoal>(
+                  value: WeightGoal.maintain, label: Text('Maintain')),
+              ButtonSegment<WeightGoal>(
+                  value: WeightGoal.lose, label: Text('Lose')),
+              ButtonSegment<WeightGoal>(
+                  value: WeightGoal.gain, label: Text('Gain')),
+            ],
+            selected: <WeightGoal>{_goal},
+            onSelectionChanged: (Set<WeightGoal> selection) => setState(() {
+              _goal = selection.first;
+            }),
+          ),
+          if (_goal != WeightGoal.maintain) ...<Widget>[
+            const SizedBox(height: 8),
+            _field(
+              _weeklyChange,
+              _goal == WeightGoal.lose ? 'Weekly loss' : 'Weekly gain',
+              150,
+              suffix: '$_weightUnit/week',
+            ),
+          ],
+          const SizedBox(height: 8),
           Text(
             'Mifflin–St Jeor estimate with common activity multipliers. '
             'Activity is approximate; your details are not saved.',
             style: text.bodySmall,
           ),
           Text(
-            'Use the estimate to fill your calorie goal, then save it with Save goals.',
+            'Weekly change uses a rough 7,700 calories/kg estimate. Actual '
+            'weight change varies and this does not adjust for metabolic changes.',
+            style: text.bodySmall,
+          ),
+          Text(
+            'Use calorie target to fill your goal, then tap Save goals.',
             style: text.bodySmall,
           ),
           const Divider(height: 24),
@@ -231,10 +293,25 @@ class _MaintenanceCalculatorState extends State<MaintenanceCalculator> {
               'TDEE: ${fmtNum(roundKcal(estimate.tdee, step: 1).toDouble(), decimals: 0)} calories/day',
               style: text.titleMedium,
             ),
+            if (goalMessage != null)
+              Text(goalMessage, style: text.bodySmall)
+            else ...<Widget>[
+              Text(
+                'Daily calorie target: ${fmtNum(goalCalories!.toDouble(), decimals: 0)} calories/day',
+                style: text.titleMedium,
+              ),
+              if (goalCalories < estimate.bmr.kcal)
+                Text(
+                  'This target is below your estimated BMR. Consider discussing your goal with a healthcare professional.',
+                  style: text.bodySmall,
+                ),
+            ],
             const SizedBox(height: 8),
             FilledButton.tonal(
-              onPressed: () => widget.onUse(roundKcal(estimate!.tdee, step: 1)),
-              child: const Text('Use estimate'),
+              onPressed: goalCalories == null
+                  ? null
+                  : () => widget.onUse(goalCalories!),
+              child: const Text('Use calorie target'),
             ),
           ],
         ],
