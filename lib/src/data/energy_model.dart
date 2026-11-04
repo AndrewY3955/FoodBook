@@ -97,15 +97,15 @@ enum BmrEquation {
 /// several weeks of intake and weight data when available.
 enum ActivityLevel {
   sedentary(1.2, 'Sedentary',
-      'Desk job or mostly sitting, under about 5,000 steps a day, little or no deliberate exercise.'),
+      'Mostly sitting, under 5,000 steps/day, and little or no planned exercise.'),
   light(1.25, 'Lightly active',
-      'On your feet some of the day or about 5,000 to 7,500 steps, with 1 to 3 easy workouts a week.'),
+      'Light walking or jogging; about 5,000-7,500 steps/day or 1-3 gym days/week.'),
   moderate(1.45, 'Moderately active',
-      'Mostly on your feet or about 7,500 to 10,000 steps, with 3 to 5 solid workouts a week.'),
+      'On your feet part of the day; about 7,500-10,000 steps/day or around 4 gym days/week.'),
   very(1.6, 'Very active',
-      'Physical job or 10,000+ steps, with 6 to 7 hard workouts a week.'),
+      'Very active job, 10,000+ steps/day, or hard workouts most days (5-7 days/week).'),
   extreme(1.75, 'Extremely active',
-      'Heavy manual labor or two training sessions a day on most days. Rare. If unsure, choose a lower level.');
+      'Heavy manual work or multiple hard training sessions most days. Uncommon; if unsure, choose a lower level.');
 
   const ActivityLevel(this.factor, this.label, this.description);
   final double factor;

@@ -291,7 +291,17 @@ class _MaintenanceCalculatorState extends ConsumerState<MaintenanceCalculator> {
             decoration: const InputDecoration(labelText: 'Activity level'),
             items: <DropdownMenuItem<ActivityLevel>>[
               for (final ActivityLevel a in ActivityLevel.values)
-                DropdownMenuItem<ActivityLevel>(value: a, child: Text(a.label)),
+                DropdownMenuItem<ActivityLevel>(
+                  value: a,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(a.label, style: text.bodyMedium),
+                      Text(a.description, style: text.bodySmall),
+                    ],
+                  ),
+                ),
             ],
             onChanged: (ActivityLevel? v) =>
                 setState(() => _activity = v ?? _activity),
@@ -299,7 +309,6 @@ class _MaintenanceCalculatorState extends ConsumerState<MaintenanceCalculator> {
           Padding(
             padding: const EdgeInsets.only(top: 4),
             child: Text(
-              '${_activity.description} '
               'This is a conservative starting estimate, not a medical '
               'measurement; your actual maintenance can differ.',
               style: text.bodySmall,

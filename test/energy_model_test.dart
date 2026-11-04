@@ -184,6 +184,11 @@ void main() {
       for (final ActivityLevel a in ActivityLevel.values) {
         expect(a.description.length, greaterThan(30));
       }
+      expect(ActivityLevel.light.description, contains('1-3 gym days/week'));
+      expect(ActivityLevel.moderate.description,
+          contains('around 4 gym days/week'));
+      expect(ActivityLevel.very.description, contains('10,000+ steps/day'));
+      expect(ActivityLevel.very.description, contains('5-7 days/week'));
     });
 
     test('suggestion is conservative and does not double count', () {
