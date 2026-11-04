@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../data/energy_model.dart';
 import '../data/repositories/nutrition_repository.dart';
 import 'providers.dart';
 
@@ -11,6 +12,23 @@ final FutureProvider<NutritionGoals> nutritionGoalsProvider =
     FutureProvider<NutritionGoals>((Ref ref) {
   ref.watch(sessionProvider);
   return ref.watch(nutritionRepositoryProvider).goals();
+});
+
+final FutureProvider<BodyProfile?> bodyProfileProvider =
+    FutureProvider<BodyProfile?>((Ref ref) {
+  ref.watch(sessionProvider);
+  return ref.watch(nutritionRepositoryProvider).bodyProfile();
+});
+
+/// Weigh-ins for the 90 days ending today. Invalidate after a change.
+final FutureProvider<List<WeighIn>> weighInsProvider =
+    FutureProvider<List<WeighIn>>((Ref ref) {
+  ref.watch(sessionProvider);
+  final DateTime n = DateTime.now();
+  final DateTime today = DateTime(n.year, n.month, n.day);
+  return ref
+      .watch(nutritionRepositoryProvider)
+      .weighIns(today.subtract(const Duration(days: 89)), today);
 });
 
 /// The day shown on the Today tab (date only).

@@ -2,7 +2,76 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/failure.dart';
 import '../../core/security/input_sanitizer.dart';
+import '../energy_model.dart';
 import '../models/models.dart';
+
+/// Saved inputs for the maintenance estimate. Weight is the starting
+/// weight; later weigh-ins supersede it.
+class BodyProfile {
+  const BodyProfile({
+    required this.sex,
+    required this.ageYears,
+    required this.heightCm,
+    required this.weightKg,
+    this.activity = ActivityLevel.sedentary,
+    this.equation = BmrEquation.mifflinStJeor,
+    this.bodyFatPercent,
+    this.bodyFatMeasured = false,
+    this.weightUnit = WeightUnit.lb,
+  });
+
+  final Sex sex;
+  final int ageYears;
+  final double heightCm;
+  final double weightKg;
+  final ActivityLevel activity;
+  final BmrEquation equation;
+  final double? bodyFatPercent;
+  final bool bodyFatMeasured;
+  final WeightUnit weightUnit;
+
+  /// Throws [EnergyInputError] when a value is out of range.
+  EnergyProfile toEnergyProfile() => EnergyProfile(
+        sex: sex,
+        ageYears: ageYears.toDouble(),
+        weightKg: weightKg,
+        heightCm: heightCm,
+        activity: activity,
+        equation: equation,
+        bodyFatPercent: bodyFatPercent,
+        bodyFatMeasured: bodyFatMeasured,
+      );
+
+  factory BodyProfile.fromJson(Map<String, dynamic> j) => BodyProfile(
+        sex: Sex.values.asNameMap()['${j['sex']}'] ?? Sex.male,
+        ageYears: (j['age_years'] as num).round(),
+        heightCm: (j['height_cm'] as num).toDouble(),
+        weightKg: (j['weight_kg'] as num).toDouble(),
+        activity: ActivityLevel.values.asNameMap()['${j['activity']}'] ??
+            ActivityLevel.sedentary,
+        equation: BmrEquation.values.asNameMap()['${j['equation']}'] ??
+            BmrEquation.mifflinStJeor,
+        bodyFatPercent: (j['body_fat_percent'] as num?)?.toDouble(),
+        bodyFatMeasured: j['body_fat_measured'] == true,
+        weightUnit: WeightUnit.values.asNameMap()['${j['weight_unit']}'] ??
+            WeightUnit.lb,
+      );
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+        'sex': sex.name,
+        'age_years': ageYears,
+        'height_cm': double.parse(heightCm.toStringAsFixed(1)),
+        'weight_kg': double.parse(weightKg.toStringAsFixed(1)),
+        'activity': activity.name,
+        'equation': equation.name,
+        'body_fat_percent': bodyFatPercent == null
+            ? null
+            : double.parse(bodyFatPercent!.toStringAsFixed(1)),
+        'body_fat_measured': bodyFatMeasured && bodyFatPercent != null,
+        'weight_unit': weightUnit.name,
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+      };
+}
 
 /// Personal daily targets. Protein, carbs and fat are stored in grams;
 /// the UI edits them as a percentage split of the calorie goal.
@@ -232,6 +301,83 @@ class NutritionRepository {
   Future<void> delete(String id) async {
     try {
       await _client.from('food_log').delete().eq('id', id).eq('user_id', _uid);
+    } catch (error) {
+      throw Failure.from(error);
+    }
+  }
+
+  Future<BodyProfile?> bodyProfile() async {
+    try {
+      final Map<String, dynamic>? row = await _client
+          .from('body_profile')
+          .select()
+          .eq('user_id', _uid)
+          .maybeSingle();
+      return row == null ? null : BodyProfile.fromJson(row);
+    } catch (error) {
+      throw Failure.from(error);
+    }
+  }
+
+  Future<void> saveBodyProfile(BodyProfile p) async {
+    // Fail with a readable message before the database check constraint does.
+    try {
+      p.toEnergyProfile();
+    } on EnergyInputError catch (e) {
+      throw Failure(e.message);
+    }
+    try {
+      await _client
+          .from('body_profile')
+          .upsert(<String, dynamic>{'user_id': _uid, ...p.toJson()});
+    } catch (error) {
+      throw Failure.from(error);
+    }
+  }
+
+  Future<List<WeighIn>> weighIns(DateTime from, DateTime to) async {
+    try {
+      final List<Map<String, dynamic>> rows = await _client
+          .from('weigh_ins')
+          .select('weighed_on, weight_kg')
+          .eq('user_id', _uid)
+          .gte('weighed_on', dayKey(from))
+          .lte('weighed_on', dayKey(to))
+          .order('weighed_on');
+      return rows
+          .map((Map<String, dynamic> r) => WeighIn(
+                DateTime.parse('${r['weighed_on']}'),
+                (r['weight_kg'] as num).toDouble(),
+              ))
+          .toList(growable: false);
+    } catch (error) {
+      throw Failure.from(error);
+    }
+  }
+
+  /// One weigh-in per day; logging again the same day replaces it.
+  Future<void> saveWeighIn(DateTime day, double kg) async {
+    if (kg.isNaN || kg < 30 || kg > 400) {
+      throw const Failure('Weight must be between 30 kg (66 lb) and 400 kg.');
+    }
+    try {
+      await _client.from('weigh_ins').upsert(<String, dynamic>{
+        'user_id': _uid,
+        'weighed_on': dayKey(day),
+        'weight_kg': double.parse(kg.toStringAsFixed(1)),
+      });
+    } catch (error) {
+      throw Failure.from(error);
+    }
+  }
+
+  Future<void> deleteWeighIn(DateTime day) async {
+    try {
+      await _client
+          .from('weigh_ins')
+          .delete()
+          .eq('user_id', _uid)
+          .eq('weighed_on', dayKey(day));
     } catch (error) {
       throw Failure.from(error);
     }

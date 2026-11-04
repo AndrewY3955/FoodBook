@@ -193,6 +193,8 @@ build in headless Edge (set `PHOTO_DIR` for fixtures; Edge path is in-script).
 
 Migration 0018 adds label columns and `recipes.micros` (jsonb for extra vitamins and minerals), plus `nutrition_goals` and `food_log`. Both are owner-only under RLS and cascade-delete with the auth user, so account deletion removes them. Estimates come from the built-in whole-food table (`nutrition_db.dart`, `nutrition_micros.dart`) via `NutritionEstimator`; they are approximate.
 
+Maintenance calories: migration 0019 adds `body_profile` and `weigh_ins` (owner-only RLS, kilograms). `energy_model.dart` holds the pure maths (formula TDEE, calibration against the diary and weigh-ins, confidence-limited blend, projection); `MaintenanceCalculator` in the Goals tab is the UI. Apply 0019 before using it. Everything is an estimate, never a measured metabolic rate.
+
 ## Roadmap (planned, not built)
 
 Each phase gets its own numbered migration (0019+), owner-only RLS, unit tests for parsers and calculators, and a live check after deploy.

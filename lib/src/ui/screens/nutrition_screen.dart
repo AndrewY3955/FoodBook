@@ -7,6 +7,7 @@ import '../../data/models/models.dart';
 import '../../data/repositories/nutrition_repository.dart';
 import '../../state/nutrition_controllers.dart';
 import '../../state/recipe_controllers.dart';
+import '../widgets/maintenance_calculator.dart';
 import '../widgets/nutrition_widgets.dart';
 
 DateTime _today() {
@@ -941,7 +942,7 @@ class _GoalsTabState extends ConsumerState<_GoalsTab> {
             child: Text(_saving ? 'Saving…' : 'Save goals'),
           ),
           const SizedBox(height: 12),
-          _CalorieCalculator(
+          MaintenanceCalculator(
               onUse: (int kcal) => setState(() => _cal.text = '$kcal')),
           const _Card(
             title: 'About vitamin and mineral targets',
@@ -954,136 +955,6 @@ class _GoalsTabState extends ConsumerState<_GoalsTab> {
           ),
         ]);
       },
-    );
-  }
-}
-
-class _CalorieCalculator extends StatefulWidget {
-  const _CalorieCalculator({required this.onUse});
-
-  final ValueChanged<int> onUse;
-
-  @override
-  State<_CalorieCalculator> createState() => _CalorieCalculatorState();
-}
-
-class _CalorieCalculatorState extends State<_CalorieCalculator> {
-  bool _male = true;
-  final TextEditingController _age = TextEditingController(text: '30');
-  final TextEditingController _ft = TextEditingController(text: '5');
-  final TextEditingController _inch = TextEditingController(text: '9');
-  final TextEditingController _lb = TextEditingController(text: '170');
-  double _activity = 1.375;
-  int _goalDelta = 0;
-
-  @override
-  void dispose() {
-    _age.dispose();
-    _ft.dispose();
-    _inch.dispose();
-    _lb.dispose();
-    super.dispose();
-  }
-
-  /// Mifflin-St Jeor estimate of daily energy needs.
-  int get _kcal {
-    final double kg = (double.tryParse(_lb.text) ?? 0) * 0.45359;
-    final double cm = ((double.tryParse(_ft.text) ?? 0) * 12 +
-            (double.tryParse(_inch.text) ?? 0)) *
-        2.54;
-    final double age = double.tryParse(_age.text) ?? 0;
-    final double bmr = 10 * kg + 6.25 * cm - 5 * age + (_male ? 5 : -161);
-    return (bmr * _activity + _goalDelta).round().clamp(1200, 6000);
-  }
-
-  Widget _f(TextEditingController c, String l, double w) => SizedBox(
-        width: w,
-        child: TextField(
-          controller: c,
-          onChanged: (_) => setState(() {}),
-          decoration: InputDecoration(labelText: l, isDense: true),
-          keyboardType: TextInputType.number,
-          inputFormatters: <TextInputFormatter>[
-            FilteringTextInputFormatter.digitsOnly,
-          ],
-        ),
-      );
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: ExpansionTile(
-        title: const Text('Calorie calculator'),
-        subtitle: const Text('Estimate a goal from your body and activity'),
-        childrenPadding: const EdgeInsets.all(14),
-        expandedCrossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          SegmentedButton<bool>(
-            segments: const <ButtonSegment<bool>>[
-              ButtonSegment<bool>(value: true, label: Text('Male')),
-              ButtonSegment<bool>(value: false, label: Text('Female')),
-            ],
-            selected: <bool>{_male},
-            onSelectionChanged: (Set<bool> s) =>
-                setState(() => _male = s.first),
-          ),
-          const SizedBox(height: 12),
-          Wrap(spacing: 8, runSpacing: 8, children: <Widget>[
-            _f(_age, 'Age', 80),
-            _f(_ft, 'Height ft', 90),
-            _f(_inch, 'in', 70),
-            _f(_lb, 'Weight lb', 100),
-          ]),
-          const SizedBox(height: 12),
-          DropdownButtonFormField<double>(
-            initialValue: _activity,
-            decoration: const InputDecoration(labelText: 'Activity level'),
-            items: const <DropdownMenuItem<double>>[
-              DropdownMenuItem<double>(value: 1.2, child: Text('Sedentary')),
-              DropdownMenuItem<double>(
-                  value: 1.375, child: Text('Lightly active')),
-              DropdownMenuItem<double>(
-                  value: 1.55, child: Text('Moderately active')),
-              DropdownMenuItem<double>(
-                  value: 1.725, child: Text('Very active')),
-            ],
-            onChanged: (double? v) =>
-                setState(() => _activity = v ?? _activity),
-          ),
-          const SizedBox(height: 12),
-          DropdownButtonFormField<int>(
-            initialValue: _goalDelta,
-            decoration: const InputDecoration(labelText: 'Goal'),
-            items: const <DropdownMenuItem<int>>[
-              DropdownMenuItem<int>(
-                  value: -500, child: Text('Lose about 1 lb a week')),
-              DropdownMenuItem<int>(
-                  value: -250, child: Text('Lose about ½ lb a week')),
-              DropdownMenuItem<int>(value: 0, child: Text('Maintain weight')),
-              DropdownMenuItem<int>(
-                  value: 250, child: Text('Gain about ½ lb a week')),
-            ],
-            onChanged: (int? v) => setState(() => _goalDelta = v ?? _goalDelta),
-          ),
-          const SizedBox(height: 12),
-          Row(children: <Widget>[
-            Expanded(
-              child: Text('About $_kcal calories a day',
-                  style: Theme.of(context).textTheme.titleMedium),
-            ),
-            FilledButton.tonal(
-              onPressed: () => widget.onUse(_kcal),
-              child: const Text('Use this'),
-            ),
-          ]),
-          const SizedBox(height: 4),
-          Text(
-            'A general estimate, not medical advice.',
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-        ],
-      ),
     );
   }
 }
