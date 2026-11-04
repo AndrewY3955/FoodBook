@@ -400,7 +400,7 @@ class _PantryPane extends ConsumerWidget {
                     subtitle: Text(
                       m.isCookable
                           ? 'You have everything'
-                          : 'Missing ${m.missingCount} of ${m.requiredCount}',
+                          : 'Missing or short on ${m.missingCount} of ${m.requiredCount}',
                     ),
                     onTap: () => Navigator.of(context).push(
                       MaterialPageRoute<void>(

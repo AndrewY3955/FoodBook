@@ -26,7 +26,7 @@ Future<void> main() async {
       // Ending the session with the tab is the honest behaviour.
       localStorage: kIsWeb ? null : SecureTokenStorage(),
       autoRefreshToken: true,
-      detectSessionInUri: !kIsWeb,
+      detectSessionInUri: true,
     ),
     postgrestOptions: const PostgrestClientOptions(schema: 'public'),
     realtimeClientOptions: const RealtimeClientOptions(

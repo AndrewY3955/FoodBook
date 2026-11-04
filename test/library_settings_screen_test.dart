@@ -5,10 +5,22 @@ import 'package:cookistrybook/src/ui/screens/library_settings_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:cookistrybook/src/state/providers.dart';
+import 'package:cookistrybook/src/data/repositories/auth_repository.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show User;
+
+class _FakeAuth implements AuthRepository {
+  @override
+  User? get currentUser => null;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
 
 void main() {
   Widget buildScreen(MemberRole role) => ProviderScope(
         overrides: <Override>[
+          authRepositoryProvider.overrideWithValue(_FakeAuth()),
           activeLibraryRecordProvider.overrideWith(
             (Ref ref) => Library(
               id: 'library-1',

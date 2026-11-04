@@ -160,15 +160,48 @@ class LibraryRepository {
     }
   }
 
-  Future<void> leave(String libraryId) async {
-    final String? userId = _client.auth.currentUser?.id;
-    if (userId == null) return;
+  /// Leaves a library. Returns true when the caller was its only member
+  /// and the library was deleted with them.
+  Future<bool> leave(String libraryId) async {
+    if (_client.auth.currentUser?.id == null) return false;
     try {
-      await _client
+      final dynamic result = await _client.rpc<dynamic>(
+        'leave_library',
+        params: <String, dynamic>{'p_library_id': libraryId},
+      );
+      return result == 'deleted';
+    } catch (error) {
+      throw Failure.from(error);
+    }
+  }
+
+  /// True when the caller is the only active member of the library.
+  Future<bool> isOnlyMember(String libraryId) async {
+    try {
+      final List<Map<String, dynamic>> rows = await _client
           .from('library_members')
-          .delete()
+          .select('user_id')
           .eq('library_id', libraryId)
-          .eq('user_id', userId);
+          .isFilter('revoked_at', null);
+      return rows.length <= 1;
+    } catch (error) {
+      throw Failure.from(error);
+    }
+  }
+
+  /// Permanently deletes a library and everything in it. Row-level
+  /// security only lets the owner through, and a blocked delete matches
+  /// zero rows rather than raising, so the result is checked.
+  Future<void> delete(String libraryId) async {
+    try {
+      final List<Map<String, dynamic>> rows = await _client
+          .from('libraries')
+          .delete()
+          .eq('id', libraryId)
+          .select('id');
+      if (rows.isEmpty) {
+        throw const Failure('Only the owner can delete this cookbook.');
+      }
     } catch (error) {
       throw Failure.from(error);
     }

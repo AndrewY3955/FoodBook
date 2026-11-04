@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show AuthChangeEvent, AuthState;
 
 import 'state/providers.dart';
 import 'theme/app_theme.dart';
 import 'ui/screens/home_shell.dart';
+import 'ui/screens/set_new_password_screen.dart';
 import 'ui/screens/sign_in_screen.dart';
 
 class CookistryBookApp extends ConsumerWidget {
@@ -33,6 +35,15 @@ class _AuthGate extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.listen<AsyncValue<AuthState>>(authStateProvider,
+        (AsyncValue<AuthState>? _, AsyncValue<AuthState> next) {
+      final AuthState? s = next.valueOrNull;
+      if (s?.event == AuthChangeEvent.passwordRecovery) {
+        ref.read(passwordRecoveryProvider.notifier).state = true;
+      } else if (s?.event == AuthChangeEvent.signedOut) {
+        ref.read(passwordRecoveryProvider.notifier).state = false;
+      }
+    });
     final AsyncValue<Object?> auth = ref.watch(authStateProvider);
 
     return auth.when(
@@ -60,7 +71,9 @@ class _AuthGate extends ConsumerWidget {
         ),
       ),
       data: (_) => ref.watch(isSignedInProvider)
-          ? const HomeShell()
+          ? (ref.watch(passwordRecoveryProvider)
+              ? const SetNewPasswordScreen()
+              : const HomeShell())
           : const SignInScreen(),
     );
   }

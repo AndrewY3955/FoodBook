@@ -71,8 +71,28 @@ class ActiveLibraryController extends Notifier<String?> {
     ref.invalidate(myLibrariesProvider);
   }
 
-  Future<void> leave(String libraryId) async {
-    await ref.read(libraryRepositoryProvider).leave(libraryId);
+  Future<bool> isOnlyMember(String libraryId) =>
+      ref.read(libraryRepositoryProvider).isOnlyMember(libraryId);
+
+  /// Leaves the library. When the caller is its only member the files
+  /// go first (they are unreachable once the membership is gone) and the
+  /// database deletes the library itself. Returns true if it was deleted.
+  Future<bool> leave(String libraryId) async {
+    final bool alone = await isOnlyMember(libraryId);
+    if (alone) {
+      await ref.read(storageRepositoryProvider).removeLibraryFiles(libraryId);
+    }
+    final bool deleted =
+        await ref.read(libraryRepositoryProvider).leave(libraryId);
+    if (state == libraryId) state = null;
+    ref.invalidate(myLibrariesProvider);
+    return deleted;
+  }
+
+  /// Owner-only, permanent. Files first, then the row and its contents.
+  Future<void> deleteLibrary(String libraryId) async {
+    await ref.read(storageRepositoryProvider).removeLibraryFiles(libraryId);
+    await ref.read(libraryRepositoryProvider).delete(libraryId);
     if (state == libraryId) state = null;
     ref.invalidate(myLibrariesProvider);
   }

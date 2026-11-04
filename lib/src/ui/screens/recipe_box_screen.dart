@@ -10,7 +10,6 @@ import '../responsive/breakpoints.dart';
 import '../widgets/category_slider.dart';
 import '../widgets/diet_chips.dart';
 import '../widgets/recipe_card.dart';
-import 'import_screen.dart';
 import 'recipe_detail_screen.dart';
 import 'recipe_form_screen.dart';
 
@@ -94,45 +93,18 @@ class RecipeBoxScreen extends ConsumerWidget {
   }
 }
 
+/// Importing from a link is paused until it ships as a feature; see
+/// import_screen.dart, which is kept but no longer reachable.
 class _AddMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return PopupMenuButton<String>(
+    return FloatingActionButton.extended(
       tooltip: 'Add a recipe',
-      onSelected: (String value) {
-        Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (_) => value == 'import'
-                ? const ImportScreen()
-                : const RecipeFormScreen(),
-          ),
-        );
-      },
-      itemBuilder: (BuildContext context) => const <PopupMenuEntry<String>>[
-        PopupMenuItem<String>(
-          value: 'manual',
-          child: ListTile(
-            leading: Icon(Icons.edit_outlined),
-            title: Text('Write it out'),
-            contentPadding: EdgeInsets.zero,
-          ),
-        ),
-        PopupMenuItem<String>(
-          value: 'import',
-          child: ListTile(
-            leading: Icon(Icons.link),
-            title: Text('Paste a link'),
-            subtitle: Text('Instagram, TikTok or the web'),
-            contentPadding: EdgeInsets.zero,
-          ),
-        ),
-      ],
-      child: const FloatingActionButton.extended(
-        // The FAB is decorative here; the popup owns the tap.
-        onPressed: null,
-        icon: Icon(Icons.add),
-        label: Text('Add recipe'),
+      onPressed: () => Navigator.of(context).push(
+        MaterialPageRoute<void>(builder: (_) => const RecipeFormScreen()),
       ),
+      icon: const Icon(Icons.add),
+      label: const Text('Add recipe'),
     );
   }
 }
@@ -344,7 +316,7 @@ class _EmptyState extends ConsumerWidget {
             Text(
               filtered
                   ? 'Try clearing one of them.'
-                  : 'Write one out, or paste a link to one you saw.',
+                  : 'Tap Add recipe to write your first one.',
               textAlign: TextAlign.center,
             ),
           ],

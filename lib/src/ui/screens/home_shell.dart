@@ -36,36 +36,6 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     'Shopping List',
   ];
 
-  Future<void> _confirmDeleteAccount(BuildContext context) async {
-    final bool? ok = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext context) => AlertDialog(
-        title: const Text('Delete your account?'),
-        content: const Text(
-            'Your recipes, photos, pantry and plans are removed for good. '
-            'Anyone who forked or saved one of your recipes keeps their own copy.'),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Keep my account'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete everything'),
-          ),
-        ],
-      ),
-    );
-    if (ok != true) return;
-    try {
-      await ref.read(storageRepositoryProvider).deleteAccount();
-    } catch (error) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('$error')));
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final int unchecked = ref.watch(uncheckedCountProvider);
@@ -100,23 +70,13 @@ class _HomeShellState extends ConsumerState<HomeShell> {
           leadingSidebar: const LibrarySwitcher(),
           actions: <Widget>[
             IconButton(
-              tooltip: 'Library settings',
+              tooltip: 'Settings',
               icon: const Icon(Icons.settings_outlined),
               onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute<void>(
                   builder: (_) => const LibrarySettingsScreen(),
                 ),
               ),
-            ),
-            IconButton(
-              tooltip: 'Sign out',
-              icon: const Icon(Icons.logout),
-              onPressed: () => ref.read(authRepositoryProvider).signOut(),
-            ),
-            IconButton(
-              tooltip: 'Delete account',
-              icon: const Icon(Icons.person_remove_outlined),
-              onPressed: () => _confirmDeleteAccount(context),
             ),
           ],
           destinations: <AdaptiveDestination>[
@@ -250,6 +210,12 @@ class _NoLibraryState extends ConsumerState<_NoLibrary> {
                   onPressed:
                       _busy ? null : () => showJoinWithCodeDialog(context, ref),
                   child: const Text('I have an invitation code'),
+                ),
+                TextButton(
+                  onPressed: _busy
+                      ? null
+                      : () => ref.read(authRepositoryProvider).signOut(),
+                  child: const Text('Sign out'),
                 ),
               ],
             ),

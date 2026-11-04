@@ -72,3 +72,8 @@ final Provider<Session?> sessionProvider = Provider<Session?>((Ref ref) {
 
 final Provider<bool> isSignedInProvider =
     Provider<bool>((Ref ref) => ref.watch(sessionProvider) != null);
+
+/// True from the moment a password-reset link signs the user in until
+/// they choose a new password (or dismiss the prompt).
+final StateProvider<bool> passwordRecoveryProvider =
+    StateProvider<bool>((Ref ref) => false);

@@ -252,6 +252,37 @@ class StorageRepository {
     return failed;
   }
 
+  /// Removes every file stored for a library. Storage objects cannot be
+  /// deleted from SQL, so this runs before the library row is deleted,
+  /// while the caller can still see the files.
+  Future<void> removeLibraryFiles(String libraryId) async {
+    try {
+      final List<String> names = <String>[];
+      final List<FileObject> top = await _bucket.list(
+        path: libraryId,
+        searchOptions: const SearchOptions(limit: 1000),
+      );
+      for (final FileObject entry in top) {
+        if (entry.id == null) {
+          final List<FileObject> inner = await _bucket.list(
+            path: '$libraryId/${entry.name}',
+            searchOptions: const SearchOptions(limit: 1000),
+          );
+          for (final FileObject f in inner) {
+            names.add('$libraryId/${entry.name}/${f.name}');
+          }
+        } else {
+          names.add('$libraryId/${entry.name}');
+        }
+      }
+      for (int i = 0; i < names.length; i += 100) {
+        await _bucket.remove(names.sublist(i, min(i + 100, names.length)));
+      }
+    } catch (error) {
+      throw Failure.from(error);
+    }
+  }
+
   /// Removes the user's files, then their account and everything it owns.
   /// Copies other people hold (forks, saved recipes) are untouched.
   Future<void> deleteAccount() async {

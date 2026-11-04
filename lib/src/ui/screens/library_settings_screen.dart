@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/failure.dart';
 import '../../data/models/models.dart';
+import '../../data/models/enums.dart';
 import '../../state/library_controller.dart';
 import '../responsive/adaptive_scaffold.dart';
+import 'account_section.dart';
 import 'invitation_dialogs.dart';
 
 class LibrarySettingsScreen extends ConsumerWidget {
@@ -17,8 +19,21 @@ class LibrarySettingsScreen extends ConsumerWidget {
     if (library == null) {
       return Scaffold(
         appBar: AppBar(title: const Text('Library settings')),
-        body: const Center(child: Text('No active library is selected.')),
-      );
+          body: const ContentWidth(
+            maxWidth: 720,
+            child: Padding(
+              padding: EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text('No active library is selected.'),
+                  SizedBox(height: 24),
+                  AccountSection(),
+                ],
+              ),
+            ),
+          ),
+        );
     }
 
     final AsyncValue<List<Profile>> members =
@@ -103,6 +118,12 @@ class LibrarySettingsScreen extends ConsumerWidget {
             const Divider(),
             ListTile(
               contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.add_circle_outline),
+              title: const Text('Create another cookbook'),
+              onTap: () => _create(context, ref),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.key_outlined),
               title: const Text('Join another library with a code'),
               onTap: () => showJoinWithCodeDialog(context, ref),
@@ -113,14 +134,147 @@ class LibrarySettingsScreen extends ConsumerWidget {
               title: const Text('Leave this library'),
               subtitle: const Text(
                 'You will lose access to its recipes, pantry, plan and list. '
-                'The library and its content will remain for other members.',
+                'If you are the only member, the cookbook is deleted too.',
               ),
               onTap: () => _leave(context, ref, library),
             ),
+            if (library.role == MemberRole.owner)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(Icons.delete_forever_outlined,
+                    color: Theme.of(context).colorScheme.error),
+                title: Text('Delete this cookbook',
+                    style:
+                        TextStyle(color: Theme.of(context).colorScheme.error)),
+                subtitle: const Text(
+                    'Removes it for every member. This cannot be undone.'),
+                onTap: () => _delete(context, ref, library),
+              ),
+            const SizedBox(height: 16),
+            const Divider(),
+            const AccountSection(),
           ],
         ),
       ),
     );
+  }
+
+  static Future<void> _create(BuildContext context, WidgetRef ref) async {
+    final TextEditingController name = TextEditingController();
+    final String? value = await showDialog<String>(
+      context: context,
+      builder: (BuildContext dialogContext) => AlertDialog(
+        title: const Text('New cookbook'),
+        content: TextField(
+          controller: name,
+          autofocus: true,
+          maxLength: 80,
+          decoration: const InputDecoration(labelText: 'Cookbook name'),
+          onSubmitted: (String v) => Navigator.of(dialogContext).pop(v.trim()),
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () =>
+                Navigator.of(dialogContext).pop(name.text.trim()),
+            child: const Text('Create'),
+          ),
+        ],
+      ),
+    );
+    name.dispose();
+    if (value == null || value.isEmpty || !context.mounted) return;
+
+    try {
+      await ref.read(activeLibraryProvider.notifier).create(value);
+      if (context.mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Created "$value".')),
+        );
+      }
+    } catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(Failure.from(error).message)),
+        );
+      }
+    }
+  }
+
+  static Future<void> _delete(
+    BuildContext context,
+    WidgetRef ref,
+    Library library,
+  ) async {
+    final TextEditingController typed = TextEditingController();
+    final bool confirmed = await showDialog<bool>(
+          context: context,
+          builder: (BuildContext dialogContext) => StatefulBuilder(
+            builder: (BuildContext context, StateSetter setState) =>
+                AlertDialog(
+              title: const Text('Delete this cookbook?'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    '"${library.name}" and all of its recipes, photos, pantry, '
+                    'plans and shopping list will be deleted for every member. '
+                    'This is permanent and cannot be undone.',
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: typed,
+                    autofocus: true,
+                    onChanged: (_) => setState(() {}),
+                    decoration: InputDecoration(
+                      labelText: 'Type the cookbook name to confirm',
+                      helperText: library.name,
+                    ),
+                  ),
+                ],
+              ),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(false),
+                  child: const Text('Keep it'),
+                ),
+                FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.error,
+                  ),
+                  onPressed: typed.text.trim() == library.name
+                      ? () => Navigator.of(dialogContext).pop(true)
+                      : null,
+                  child: const Text('Delete forever'),
+                ),
+              ],
+            ),
+          ),
+        ) ??
+        false;
+    typed.dispose();
+    if (!confirmed || !context.mounted) return;
+
+    try {
+      await ref.read(activeLibraryProvider.notifier).deleteLibrary(library.id);
+      if (context.mounted) {
+        Navigator.of(context).popUntil((Route<dynamic> r) => r.isFirst);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Deleted "${library.name}".')),
+        );
+      }
+    } catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(Failure.from(error).message)),
+        );
+      }
+    }
   }
 
   static String _initials(String name) {
@@ -203,13 +357,21 @@ class LibrarySettingsScreen extends ConsumerWidget {
     WidgetRef ref,
     Library library,
   ) async {
+    final bool alone = await ref
+        .read(activeLibraryProvider.notifier)
+        .isOnlyMember(library.id)
+        .catchError((Object _) => false);
+    if (!context.mounted) return;
     final bool confirmed = await showDialog<bool>(
           context: context,
           builder: (BuildContext dialogContext) => AlertDialog(
-            title: const Text('Leave this library?'),
+            title: Text(alone ? 'Delete this cookbook?' : 'Leave this library?'),
             content: Text(
-              'You will no longer see "${library.name}". '
-              'Its content will remain available to its other members.',
+              alone
+                  ? 'You are the only member, so leaving deletes "${library.name}" '
+                      'and everything in it permanently. This cannot be undone.'
+                  : 'You will no longer see "${library.name}". '
+                      'Its content will remain available to its other members.',
             ),
             actions: <Widget>[
               TextButton(
@@ -218,7 +380,7 @@ class LibrarySettingsScreen extends ConsumerWidget {
               ),
               FilledButton(
                 onPressed: () => Navigator.of(dialogContext).pop(true),
-                child: const Text('Leave library'),
+                child: Text(alone ? 'Delete cookbook' : 'Leave library'),
               ),
             ],
           ),
