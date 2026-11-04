@@ -29,6 +29,19 @@ The PostgreSQL suite was repaired: `rebuild.sh` now applies 0001–0005, 0007–
 
 ---
 
+## Hosted release check — 2026-11-04
+
+Run against the live site (https://andrewy3955.github.io/FoodBook/) and the hosted Supabase project, signed in as a real user:
+
+- `flutter analyze`: no issues. `flutter test`: 64 passed. Production build deployed by CI; the deployed bundle contains no secret key.
+- Migrations 0015–0017 applied to hosted Supabase (library delete/leave, quantity-aware pantry matching, recipe albums). After 0017: 10 libraries, 10 "General" albums, 0 recipes without an album.
+- All five tabs opened and read back (Discover, Recipes, Plan, Shopping, Pantry), in that order.
+- Albums: created and deleted an album from the Albums sheet; recipes stayed in General.
+- Pantry: adding Flour made "QA Pancakes — You have everything" appear; removing it cleared the suggestion.
+- Not exercised in the browser this round: Grid layout, Android, iOS, and a manual screen-reader pass.
+
+---
+
 ## Previous verification evidence
 
 ### Database schema, RLS and engines
