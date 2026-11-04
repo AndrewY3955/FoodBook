@@ -45,10 +45,16 @@ void main() {
     await tester.tap(find.text('Use calorie target'));
     expect(usedEstimate, 2495);
 
-    await tester.tap(find.text('Lose'));
+    await tester.tap(find.text('Cutting'));
     await tester.pumpAndSettle();
-    await tester.enterText(
-        find.byKey(const ValueKey<String>('maintenance-Weekly loss')), '1');
+    await tester
+        .tap(find.byKey(const ValueKey<String>('maintenance-weekly-change')));
+    await tester.pumpAndSettle();
+    expect(find.text('0.5 lb/week'), findsOneWidget);
+    expect(find.text('1 lb/week'), findsNWidgets(2));
+    expect(find.text('1.5 lb/week'), findsOneWidget);
+    expect(find.text('2 lb/week'), findsOneWidget);
+    await tester.tap(find.text('1 lb/week').last);
     await tester.pumpAndSettle();
 
     expect(
@@ -77,7 +83,7 @@ void main() {
     expect(find.text('Log weight'), findsNothing);
   });
 
-  testWidgets('requires a weekly amount before applying loss or gain',
+  testWidgets('bulking and metric units show fixed weekly rate options',
       (WidgetTester tester) async {
     tester.view.physicalSize = const Size(800, 1000);
     tester.view.devicePixelRatio = 1;
@@ -100,13 +106,17 @@ void main() {
     await tester.enterText(
         find.byKey(const ValueKey<String>('maintenance-Inches')), '10');
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Gain'));
+    await tester.tap(find.text('kg / cm'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Bulking'));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('Enter your weekly gain'), findsOneWidget);
-    expect(
-      tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
-      isNull,
-    );
+    await tester
+        .tap(find.byKey(const ValueKey<String>('maintenance-weekly-change')));
+    await tester.pumpAndSettle();
+    expect(find.text('0.23 kg/week'), findsOneWidget);
+    expect(find.text('0.45 kg/week'), findsNWidgets(2));
+    expect(find.text('0.68 kg/week'), findsOneWidget);
+    expect(find.text('0.91 kg/week'), findsOneWidget);
   });
 }

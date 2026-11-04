@@ -21,10 +21,10 @@ class _MaintenanceCalculatorState extends State<MaintenanceCalculator> {
   HeightUnit _heightUnit = HeightUnit.feetInches;
   ActivityLevel _activity = ActivityLevel.sedentary;
   WeightGoal _goal = WeightGoal.maintain;
+  double _weeklyChangeLb = 1;
 
   final TextEditingController _age = TextEditingController();
   final TextEditingController _weight = TextEditingController();
-  final TextEditingController _weeklyChange = TextEditingController();
   final TextEditingController _cm = TextEditingController();
   final TextEditingController _ft = TextEditingController();
   final TextEditingController _inch = TextEditingController();
@@ -33,7 +33,6 @@ class _MaintenanceCalculatorState extends State<MaintenanceCalculator> {
   void dispose() {
     _age.dispose();
     _weight.dispose();
-    _weeklyChange.dispose();
     _cm.dispose();
     _ft.dispose();
     _inch.dispose();
@@ -86,16 +85,11 @@ class _MaintenanceCalculatorState extends State<MaintenanceCalculator> {
   void _changeUnits(WeightUnit next) {
     if (next == _unit) return;
     final double? weight = double.tryParse(_weight.text.trim());
-    final double? weeklyChange = double.tryParse(_weeklyChange.text.trim());
     final double? heightCm = _currentHeightCm();
     setState(() {
       if (weight != null) {
         final double kg = weightToKg(weight, _unit);
         _weight.text = fmtNum(next == WeightUnit.kg ? kg : kg / kgPerLb);
-      }
-      if (weeklyChange != null) {
-        final double kg = weightToKg(weeklyChange, _unit);
-        _weeklyChange.text = fmtNum(next == WeightUnit.kg ? kg : kg / kgPerLb);
       }
       _unit = next;
       _heightUnit =
@@ -151,21 +145,14 @@ class _MaintenanceCalculatorState extends State<MaintenanceCalculator> {
       if (_goal == WeightGoal.maintain) {
         goalCalories = roundKcal(estimate.tdee, step: 1);
       } else {
-        final double? weeklyChange = double.tryParse(_weeklyChange.text.trim());
-        if (weeklyChange == null) {
-          final String changeType = _goal == WeightGoal.lose ? 'loss' : 'gain';
-          goalMessage =
-              'Enter your weekly $changeType to calculate a daily calorie target.';
-        } else {
-          goalCalories = roundKcal(
-            dailyCalorieGoal(
-              maintenanceKcal: estimate.tdee,
-              goal: _goal,
-              weeklyChangeKg: weightToKg(weeklyChange, _unit),
-            ),
-            step: 1,
-          );
-        }
+        goalCalories = roundKcal(
+          dailyCalorieGoal(
+            maintenanceKcal: estimate.tdee,
+            goal: _goal,
+            weeklyChangeKg: weightToKg(_weeklyChangeLb, WeightUnit.lb),
+          ),
+          step: 1,
+        );
       }
     } on EnergyInputError catch (error) {
       if (estimate == null) {
@@ -246,11 +233,11 @@ class _MaintenanceCalculatorState extends State<MaintenanceCalculator> {
           SegmentedButton<WeightGoal>(
             segments: const <ButtonSegment<WeightGoal>>[
               ButtonSegment<WeightGoal>(
-                  value: WeightGoal.maintain, label: Text('Maintain')),
+                  value: WeightGoal.maintain, label: Text('Maintaining')),
               ButtonSegment<WeightGoal>(
-                  value: WeightGoal.lose, label: Text('Lose')),
+                  value: WeightGoal.lose, label: Text('Cutting')),
               ButtonSegment<WeightGoal>(
-                  value: WeightGoal.gain, label: Text('Gain')),
+                  value: WeightGoal.gain, label: Text('Bulking')),
             ],
             selected: <WeightGoal>{_goal},
             onSelectionChanged: (Set<WeightGoal> selection) => setState(() {
@@ -259,11 +246,27 @@ class _MaintenanceCalculatorState extends State<MaintenanceCalculator> {
           ),
           if (_goal != WeightGoal.maintain) ...<Widget>[
             const SizedBox(height: 8),
-            _field(
-              _weeklyChange,
-              _goal == WeightGoal.lose ? 'Weekly loss' : 'Weekly gain',
-              150,
-              suffix: '$_weightUnit/week',
+            DropdownButtonFormField<double>(
+              key: const ValueKey<String>('maintenance-weekly-change'),
+              initialValue: _weeklyChangeLb,
+              decoration: InputDecoration(
+                labelText:
+                    _goal == WeightGoal.lose ? 'Weekly loss' : 'Weekly gain',
+              ),
+              items: <DropdownMenuItem<double>>[
+                for (final double pounds in <double>[0.5, 1, 1.5, 2])
+                  DropdownMenuItem<double>(
+                    value: pounds,
+                    child: Text(
+                      '${fmtNum(_unit == WeightUnit.lb ? pounds : pounds * kgPerLb, decimals: 2)} $_weightUnit/week',
+                    ),
+                  ),
+              ],
+              onChanged: (double? value) {
+                if (value != null) {
+                  setState(() => _weeklyChangeLb = value);
+                }
+              },
             ),
           ],
           const SizedBox(height: 8),
@@ -273,7 +276,7 @@ class _MaintenanceCalculatorState extends State<MaintenanceCalculator> {
             style: text.bodySmall,
           ),
           Text(
-            'Weekly change uses a rough 7,700 calories/kg estimate. Actual '
+            'Weekly goals use a rough 7,700 calories/kg estimate. Actual '
             'weight change varies and this does not adjust for metabolic changes.',
             style: text.bodySmall,
           ),
