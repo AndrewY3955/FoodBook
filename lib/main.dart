@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -9,6 +10,9 @@ import 'src/core/security/secure_token_storage.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Web exposes no accessibility tree until semantics are requested;
+  // turn them on so screen readers and keyboard users work at once.
+  SemanticsBinding.instance.ensureSemantics();
 
   // Fail here rather than at the first query with an opaque network
   // error.

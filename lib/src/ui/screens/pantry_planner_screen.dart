@@ -88,6 +88,7 @@ class _PlannerPane extends ConsumerWidget {
           child: Row(
             children: <Widget>[
               IconButton(
+                tooltip: 'Previous week',
                 icon: const Icon(Icons.chevron_left),
                 onPressed: weekController.previous,
               ),
@@ -100,6 +101,7 @@ class _PlannerPane extends ConsumerWidget {
                 ),
               ),
               IconButton(
+                tooltip: 'Next week',
                 icon: const Icon(Icons.chevron_right),
                 onPressed: weekController.next,
               ),
@@ -245,6 +247,7 @@ class _DayColumn extends ConsumerWidget {
                       ),
                     ),
                     trailing: IconButton(
+                      tooltip: 'Remove from plan',
                       icon: const Icon(Icons.close, size: 18),
                       onPressed: () =>
                           ref.read(mealPlanProvider.notifier).remove(entry.id),
@@ -420,6 +423,7 @@ class _PantryPane extends ConsumerWidget {
               child: Text('In the cupboard', style: theme.textTheme.titleLarge),
             ),
             IconButton(
+              tooltip: 'Add to cupboard',
               icon: const Icon(Icons.add),
               onPressed: () => _addToPantry(context, ref),
             ),
@@ -454,6 +458,7 @@ class _PantryPane extends ConsumerWidget {
                   subtitle:
                       Text(QuantityFormat.withUnit(item.quantity, item.unit)),
                   trailing: IconButton(
+                    tooltip: 'Remove ${item.name} from cupboard',
                     icon: const Icon(Icons.close, size: 18),
                     onPressed: () => ref
                         .read(pantryControllerProvider.notifier)

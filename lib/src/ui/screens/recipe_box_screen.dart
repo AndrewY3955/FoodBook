@@ -152,6 +152,7 @@ class _FilterBarState extends ConsumerState<_FilterBar> {
                 suffixIcon: filter.query.isEmpty
                     ? null
                     : IconButton(
+                        tooltip: 'Clear search',
                         icon: const Icon(Icons.close),
                         onPressed: () {
                           _search.clear();

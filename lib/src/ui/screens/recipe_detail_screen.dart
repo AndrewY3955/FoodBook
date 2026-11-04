@@ -486,6 +486,7 @@ class _IngredientPanel extends ConsumerWidget {
             child: Row(
               children: <Widget>[
                 IconButton(
+                  tooltip: 'Fewer servings',
                   icon: const Icon(Icons.remove_circle_outline),
                   onPressed: servings <= 1
                       ? null
@@ -502,6 +503,7 @@ class _IngredientPanel extends ConsumerWidget {
                   ),
                 ),
                 IconButton(
+                  tooltip: 'More servings',
                   icon: const Icon(Icons.add_circle_outline),
                   onPressed: servings >= 100
                       ? null

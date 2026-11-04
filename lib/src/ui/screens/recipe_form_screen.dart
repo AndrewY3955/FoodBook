@@ -698,6 +698,7 @@ class _IngredientRow extends ConsumerWidget {
             },
           ),
           IconButton(
+            tooltip: 'Remove ingredient',
             icon: const Icon(Icons.close, size: 20),
             onPressed: () => controller.removeIngredient(index),
           ),
@@ -770,6 +771,7 @@ class _StepsPane extends ConsumerWidget {
                   ),
                 ),
                 IconButton(
+                  tooltip: 'Remove step',
                   icon: const Icon(Icons.close, size: 20),
                   onPressed: () => controller.removeStep(i),
                 ),

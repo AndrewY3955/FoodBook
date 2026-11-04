@@ -263,6 +263,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                 labelText: 'Password',
                 prefixIcon: const Icon(Icons.lock_outline),
                 suffixIcon: IconButton(
+                  tooltip: _obscure ? 'Show password' : 'Hide password',
                   icon: Icon(
                     _obscure ? Icons.visibility_off : Icons.visibility,
                   ),
