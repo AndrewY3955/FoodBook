@@ -211,7 +211,8 @@ class _MaintenanceCalculatorState extends State<MaintenanceCalculator> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Mifflin–St Jeor estimate; activity is approximate. Your details are not saved.',
+            'Mifflin–St Jeor estimate with common activity multipliers. '
+            'Activity is approximate; your details are not saved.',
             style: text.bodySmall,
           ),
           Text(
@@ -223,13 +224,16 @@ class _MaintenanceCalculatorState extends State<MaintenanceCalculator> {
             Text(estimateMessage!, style: text.bodySmall)
           else ...<Widget>[
             Text(
-              'About ${roundKcal(estimate.tdee, step: 50)} calories a day',
+              'BMR: ${fmtNum(roundKcal(estimate.bmr.kcal, step: 1).toDouble(), decimals: 0)} calories/day',
+              style: text.bodyMedium,
+            ),
+            Text(
+              'TDEE: ${fmtNum(roundKcal(estimate.tdee, step: 1).toDouble(), decimals: 0)} calories/day',
               style: text.titleMedium,
             ),
             const SizedBox(height: 8),
             FilledButton.tonal(
-              onPressed: () =>
-                  widget.onUse(roundKcal(estimate!.tdee, step: 50)),
+              onPressed: () => widget.onUse(roundKcal(estimate!.tdee, step: 1)),
               child: const Text('Use estimate'),
             ),
           ],

@@ -61,7 +61,7 @@ void main() {
       expect(computeBmr(f).kcal, closeTo(1370.25, 1e-9));
     });
 
-    test('reported example uses a conservative light-activity estimate', () {
+    test('reported example uses the common light-activity multiplier', () {
       final double kg = weightToKg(190, WeightUnit.lb);
       final double cm = heightToCm(HeightUnit.feetInches, 5, inches: 6);
       final EnergyProfile p = EnergyProfile(
@@ -72,7 +72,7 @@ void main() {
         activity: ActivityLevel.light,
       );
       expect(computeBmr(p).kcal, closeTo(1814.58, 0.01));
-      expect(formulaTdee(p).tdee, closeTo(2268.22, 0.02));
+      expect(formulaTdee(p).tdee, closeTo(2495.05, 0.02));
       expect(formulaTdee(p.copyWith(activity: ActivityLevel.sedentary)).tdee,
           closeTo(2177.49, 0.02));
     });
@@ -166,10 +166,10 @@ void main() {
     test('every multiplier', () {
       const List<double> expected = <double>[
         2136.0,
-        2225.0,
-        2581.0,
-        2848.0,
-        3115.0,
+        2447.5,
+        2759.0,
+        3070.5,
+        3382.0,
       ];
       for (int i = 0; i < ActivityLevel.values.length; i++) {
         final ActivityLevel a = ActivityLevel.values[i];
@@ -177,7 +177,7 @@ void main() {
             reason: a.label);
       }
       expect(ActivityLevel.values.map((ActivityLevel a) => a.factor),
-          <double>[1.2, 1.25, 1.45, 1.6, 1.75]);
+          <double>[1.2, 1.375, 1.55, 1.725, 1.9]);
     });
 
     test('activity levels have short descriptions', () {
@@ -191,11 +191,11 @@ void main() {
       expect(
           ActivityLevel.values.map((ActivityLevel a) => a.description),
           <String>[
-            'Mostly sitting',
-            'Some walking or light exercise',
-            'Regular walking or workouts',
-            'Hard exercise most days',
-            'Very strenuous daily activity',
+            'Little to no exercise',
+            'Light exercise 1-3 days/week',
+            'Moderate exercise 3-5 days/week',
+            'Hard exercise 5-6 days/week',
+            'Hard exercise 6-7 days/week',
           ]);
     });
 
@@ -242,7 +242,7 @@ void main() {
     test('results are not clamped or rounded internally', () {
       final double v =
           formulaTdee(male(w: 81.234, a: ActivityLevel.light)).tdee;
-      expect(v, closeTo((10 * 81.234 + 6.25 * 180 - 150 + 5) * 1.25, 1e-9));
+      expect(v, closeTo((10 * 81.234 + 6.25 * 180 - 150 + 5) * 1.375, 1e-9));
       expect(v, isNot(v.roundToDouble()));
       expect(roundKcal(2447.5), 2450);
       expect(roundKcal(2447.5, step: 10), 2450);

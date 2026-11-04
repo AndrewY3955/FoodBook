@@ -1,4 +1,5 @@
 import 'package:cookistrybook/src/ui/widgets/maintenance_calculator.dart';
+import 'package:cookistrybook/src/data/energy_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -27,9 +28,16 @@ void main() {
         find.byKey(const ValueKey<String>('maintenance-Inches')), '6');
     await tester.pumpAndSettle();
 
-    expect(find.text('About 2200 calories a day'), findsOneWidget);
+    await tester.tap(find.byType(DropdownButtonFormField<ActivityLevel>));
+    await tester.pumpAndSettle();
+    await tester
+        .tap(find.text('Lightly active — Light exercise 1-3 days/week'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('BMR: 1815 calories/day'), findsOneWidget);
+    expect(find.text('TDEE: 2495 calories/day'), findsOneWidget);
     await tester.tap(find.text('Use estimate'));
-    expect(usedEstimate, 2200);
+    expect(usedEstimate, 2495);
   });
 
   testWidgets('asks for measurements instead of rejecting an empty form',

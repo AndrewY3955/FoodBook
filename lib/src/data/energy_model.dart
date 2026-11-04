@@ -92,15 +92,14 @@ enum BmrEquation {
   final String description;
 }
 
-/// Conservative app-specific activity multipliers for an initial estimate.
-/// These are heuristics, not clinically validated standards. Calibrate against
-/// several weeks of intake and weight data when available.
+/// Conventional activity multipliers used by many TDEE calculators.
+/// These are rough heuristics, not clinically validated standards.
 enum ActivityLevel {
-  sedentary(1.2, 'Not active', 'Mostly sitting'),
-  light(1.25, 'Lightly active', 'Some walking or light exercise'),
-  moderate(1.45, 'Moderately active', 'Regular walking or workouts'),
-  very(1.6, 'Very active', 'Hard exercise most days'),
-  extreme(1.75, 'Extremely active', 'Very strenuous daily activity');
+  sedentary(1.2, 'Not active', 'Little to no exercise'),
+  light(1.375, 'Lightly active', 'Light exercise 1-3 days/week'),
+  moderate(1.55, 'Moderately active', 'Moderate exercise 3-5 days/week'),
+  very(1.725, 'Very active', 'Hard exercise 5-6 days/week'),
+  extreme(1.9, 'Extremely active', 'Hard exercise 6-7 days/week');
 
   const ActivityLevel(this.factor, this.label, this.description);
   final double factor;
