@@ -19,7 +19,7 @@ class PlannerScreen extends StatelessWidget {
   Widget build(BuildContext context) => const _PlannerPane();
 }
 
-/// The cupboard and "what can I cook?" suggestions, a screen of its own.
+/// The pantry and "what can I cook?" suggestions, a screen of its own.
 class PantryScreen extends StatelessWidget {
   const PantryScreen({super.key});
 
@@ -339,7 +339,7 @@ class _PantryPane extends ConsumerWidget {
                 padding: EdgeInsets.symmetric(vertical: 16),
                 child: Text(
                   'Nothing clears that bar yet. Lower it, or add what is '
-                  'already in your cupboard below.',
+                  'already in your pantry below.',
                 ),
               );
             }
@@ -377,12 +377,12 @@ class _PantryPane extends ConsumerWidget {
         Row(
           children: <Widget>[
             Expanded(
-              child: Text('In the cupboard', style: theme.textTheme.titleLarge),
+              child: Text('In the pantry', style: theme.textTheme.titleLarge),
             ),
             TextButton.icon(
               onPressed: () => _addToPantry(context, ref),
               icon: const Icon(Icons.add),
-              label: const Text('Add to cupboard'),
+              label: const Text('Add to pantry'),
             ),
           ],
         ),
@@ -415,7 +415,7 @@ class _PantryPane extends ConsumerWidget {
                   subtitle:
                       Text(QuantityFormat.withUnit(item.quantity, item.unit)),
                   trailing: IconButton(
-                    tooltip: 'Remove ${item.name} from cupboard',
+                    tooltip: 'Remove ${item.name} from pantry',
                     icon: const Icon(Icons.close, size: 18),
                     onPressed: () => ref
                         .read(pantryControllerProvider.notifier)

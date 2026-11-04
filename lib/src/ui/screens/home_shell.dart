@@ -34,7 +34,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     'Recipe Box',
     'Meal Plan',
     'Shopping List',
-    'Cupboard',
+    'Pantry',
   ];
 
   @override
@@ -103,7 +103,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
               badgeCount: unchecked,
             ),
             const AdaptiveDestination(
-              label: 'Cupboard',
+              label: 'Pantry',
               icon: Icons.kitchen_outlined,
               selectedIcon: Icons.kitchen,
             ),

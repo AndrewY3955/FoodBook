@@ -48,7 +48,7 @@ installed app: own icon, no browser chrome, no App Store, no yearly fee.
    order and run `supabase/seed.sql`. Do not apply `0006` until you have read
    its header — it is a deliberate open decision, not an oversight.
 3. **Deploy the Edge Function** with `verify_jwt` left on.
-4. **Run it**: `flutter run -d chrome --dart-define=...` (see README.md).
+4. **Run it**: `flutter run -d chrome --dart-define=...` (see DEVELOPMENT.md).
 5. **Host the web build** somewhere free — Cloudflare Pages, Netlify, Vercel —
    and put it behind a password so it is not publicly reachable.
 6. **Add to Home Screen** on the iPhone.

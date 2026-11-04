@@ -705,7 +705,7 @@ Future<void> _showPlanOrShop(
             minVerticalPadding: 16,
             leading: const Icon(Icons.add_shopping_cart),
             title: const Text('Add ingredients to shopping list'),
-            subtitle: const Text('Only what your cupboard is missing'),
+            subtitle: const Text('Only what your pantry is missing'),
             onTap: () => Navigator.of(sheet).pop('shop'),
           ),
         ],
@@ -722,7 +722,7 @@ Future<void> _showPlanOrShop(
       SnackBar(
         content: Text(
           touched == 0
-              ? 'Your cupboard already covers this one.'
+              ? 'Your pantry already covers this one.'
               : '$touched item${touched == 1 ? '' : 's'} added to the shopping list.',
         ),
       ),
