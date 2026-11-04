@@ -37,9 +37,6 @@ class _MaintenanceCalculatorState extends ConsumerState<MaintenanceCalculator> {
   final TextEditingController _ft = TextEditingController();
   final TextEditingController _inch = TextEditingController();
   final TextEditingController _weighIn = TextEditingController();
-  final TextEditingController _steps = TextEditingController(text: '6000');
-  final TextEditingController _workouts = TextEditingController(text: '2');
-  Occupation _occupation = Occupation.seated;
 
   @override
   void dispose() {
@@ -50,8 +47,6 @@ class _MaintenanceCalculatorState extends ConsumerState<MaintenanceCalculator> {
       _ft,
       _inch,
       _weighIn,
-      _steps,
-      _workouts,
     ]) {
       c.dispose();
     }
@@ -148,19 +143,6 @@ class _MaintenanceCalculatorState extends ConsumerState<MaintenanceCalculator> {
       ref.invalidate(weighInsProvider);
     } catch (e) {
       _toast(Failure.from(e).message);
-    }
-  }
-
-  void _suggestActivity() {
-    try {
-      final ActivityLevel a = suggestActivity(
-        occupation: _occupation,
-        dailySteps: int.tryParse(_steps.text.trim()) ?? 0,
-        workoutsPerWeek: int.tryParse(_workouts.text.trim()) ?? 0,
-      );
-      setState(() => _activity = a);
-    } on EnergyInputError catch (e) {
-      _toast(e.message);
     }
   }
 
@@ -293,14 +275,7 @@ class _MaintenanceCalculatorState extends ConsumerState<MaintenanceCalculator> {
               for (final ActivityLevel a in ActivityLevel.values)
                 DropdownMenuItem<ActivityLevel>(
                   value: a,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(a.label, style: text.bodyMedium),
-                      Text(a.description, style: text.bodySmall),
-                    ],
-                  ),
+                  child: Text('${a.label} — ${a.description}'),
                 ),
             ],
             onChanged: (ActivityLevel? v) =>
@@ -313,33 +288,6 @@ class _MaintenanceCalculatorState extends ConsumerState<MaintenanceCalculator> {
               'measurement; your actual maintenance can differ.',
               style: text.bodySmall,
             ),
-          ),
-          ExpansionTile(
-            tilePadding: EdgeInsets.zero,
-            title: const Text('Not sure? Help me choose'),
-            children: <Widget>[
-              DropdownButtonFormField<Occupation>(
-                initialValue: _occupation,
-                isExpanded: true,
-                decoration: const InputDecoration(labelText: 'Your day'),
-                items: <DropdownMenuItem<Occupation>>[
-                  for (final Occupation o in Occupation.values)
-                    DropdownMenuItem<Occupation>(
-                        value: o, child: Text(o.label)),
-                ],
-                onChanged: (Occupation? v) =>
-                    setState(() => _occupation = v ?? _occupation),
-              ),
-              const SizedBox(height: 8),
-              Wrap(spacing: 8, runSpacing: 8, children: <Widget>[
-                _field(_steps, 'Daily steps', 130, decimal: false),
-                _field(_workouts, 'Workouts / week', 150, decimal: false),
-                FilledButton.tonal(
-                    onPressed: _suggestActivity,
-                    child: const Text('Suggest a level')),
-              ]),
-              const SizedBox(height: 8),
-            ],
           ),
           Padding(
             padding: const EdgeInsets.only(top: 4),

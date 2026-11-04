@@ -96,70 +96,16 @@ enum BmrEquation {
 /// These are heuristics, not clinically validated standards. Calibrate against
 /// several weeks of intake and weight data when available.
 enum ActivityLevel {
-  sedentary(1.2, 'Sedentary',
-      'Mostly sitting, under 5,000 steps/day, and little or no planned exercise.'),
-  light(1.25, 'Lightly active',
-      'Light walking or jogging; about 5,000-7,500 steps/day or 1-3 gym days/week.'),
-  moderate(1.45, 'Moderately active',
-      'On your feet part of the day; about 7,500-10,000 steps/day or around 4 gym days/week.'),
-  very(1.6, 'Very active',
-      'Very active job, 10,000+ steps/day, or hard workouts most days (5-7 days/week).'),
-  extreme(1.75, 'Extremely active',
-      'Heavy manual work or multiple hard training sessions most days. Uncommon; if unsure, choose a lower level.');
+  sedentary(1.2, 'Not active', 'Mostly sitting'),
+  light(1.25, 'Lightly active', 'Some walking or light exercise'),
+  moderate(1.45, 'Moderately active', 'Regular walking or workouts'),
+  very(1.6, 'Very active', 'Hard exercise most days'),
+  extreme(1.75, 'Extremely active', 'Very strenuous daily activity');
 
   const ActivityLevel(this.factor, this.label, this.description);
   final double factor;
   final String label;
   final String description;
-}
-
-enum Occupation {
-  seated('Mostly seated (desk, driving)'),
-  mixed('Some walking (teacher, retail, light duties)'),
-  onFeet('On my feet most of the day (nurse, server, trades)'),
-  heavy('Heavy physical work (construction, farming)');
-
-  const Occupation(this.label);
-  final String label;
-}
-
-/// Suggests a level from occupation, daily steps and workouts. Movement is
-/// the higher of job and steps (they overlap, so they are not added), then
-/// structured exercise is added. Ties round toward the lower level.
-ActivityLevel suggestActivity({
-  required Occupation occupation,
-  required int dailySteps,
-  required int workoutsPerWeek,
-}) {
-  if (dailySteps < 0 || dailySteps > 100000) {
-    throw const EnergyInputError('Daily steps must be between 0 and 100,000.');
-  }
-  if (workoutsPerWeek < 0 || workoutsPerWeek > 14) {
-    throw const EnergyInputError('Workouts a week must be between 0 and 14.');
-  }
-  final int job = occupation.index;
-  final int steps = dailySteps < 5000
-      ? 0
-      : dailySteps < 7500
-          ? 1
-          : dailySteps < 10000
-              ? 2
-              : dailySteps < 12500
-                  ? 3
-                  : 4;
-  final int exercise = workoutsPerWeek <= 1
-      ? 0
-      : workoutsPerWeek <= 3
-          ? 1
-          : workoutsPerWeek <= 5
-              ? 2
-              : 3;
-  final int score = math.max(job, steps) + exercise;
-  if (score <= 1) return ActivityLevel.sedentary;
-  if (score <= 3) return ActivityLevel.light;
-  if (score <= 5) return ActivityLevel.moderate;
-  if (score == 6) return ActivityLevel.very;
-  return ActivityLevel.extreme;
 }
 
 class EnergyProfile {

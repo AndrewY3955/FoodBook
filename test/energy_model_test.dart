@@ -180,49 +180,23 @@ void main() {
           <double>[1.2, 1.25, 1.45, 1.6, 1.75]);
     });
 
-    test('every level has an explanation', () {
-      for (final ActivityLevel a in ActivityLevel.values) {
-        expect(a.description.length, greaterThan(30));
-      }
-      expect(ActivityLevel.light.description, contains('1-3 gym days/week'));
-      expect(ActivityLevel.moderate.description,
-          contains('around 4 gym days/week'));
-      expect(ActivityLevel.very.description, contains('10,000+ steps/day'));
-      expect(ActivityLevel.very.description, contains('5-7 days/week'));
-    });
-
-    test('suggestion is conservative and does not double count', () {
+    test('activity levels have short descriptions', () {
+      expect(ActivityLevel.values.map((ActivityLevel a) => a.label), <String>[
+        'Not active',
+        'Lightly active',
+        'Moderately active',
+        'Very active',
+        'Extremely active',
+      ]);
       expect(
-          suggestActivity(
-              occupation: Occupation.seated,
-              dailySteps: 3000,
-              workoutsPerWeek: 0),
-          ActivityLevel.sedentary);
-      // Desk job but 3x/week workouts and ~6k steps is light, not moderate.
-      expect(
-          suggestActivity(
-              occupation: Occupation.seated,
-              dailySteps: 6000,
-              workoutsPerWeek: 3),
-          ActivityLevel.light);
-      expect(
-          suggestActivity(
-              occupation: Occupation.onFeet,
-              dailySteps: 9000,
-              workoutsPerWeek: 4),
-          ActivityLevel.moderate);
-      expect(
-          suggestActivity(
-              occupation: Occupation.heavy,
-              dailySteps: 13000,
-              workoutsPerWeek: 6),
-          ActivityLevel.extreme);
-      expect(
-          () => suggestActivity(
-              occupation: Occupation.seated,
-              dailySteps: -1,
-              workoutsPerWeek: 0),
-          throwsA(isA<EnergyInputError>()));
+          ActivityLevel.values.map((ActivityLevel a) => a.description),
+          <String>[
+            'Mostly sitting',
+            'Some walking or light exercise',
+            'Regular walking or workouts',
+            'Hard exercise most days',
+            'Very strenuous daily activity',
+          ]);
     });
 
     test('changing activity changes TDEE; BMR is unchanged', () {
