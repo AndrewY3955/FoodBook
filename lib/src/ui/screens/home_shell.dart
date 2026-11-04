@@ -248,8 +248,6 @@ class _NoLibraryState extends ConsumerState<_NoLibrary> {
 class LibrarySwitcher extends ConsumerWidget {
   const LibrarySwitcher({super.key});
 
-  static const String _newCookbook = '__new__';
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final List<Library> libraries =
@@ -258,25 +256,21 @@ class LibrarySwitcher extends ConsumerWidget {
     final LayoutScope? scope = LayoutScope.maybeOf(context);
     final bool compact = scope?.isTablet ?? false;
 
-    if (libraries.isEmpty) return const SizedBox.shrink();
+    // Recipes are organized into albums; a switcher only matters once the
+    // user has joined someone else's shared recipe book.
+    if (libraries.length < 2) return const SizedBox.shrink();
 
     if (compact) {
       return PopupMenuButton<String>(
-        tooltip: active?.name ?? 'Cookbook',
+        tooltip: active?.name ?? 'Recipe book',
         icon: const Icon(Icons.menu_book_outlined),
-        onSelected: (String id) => id == _newCookbook
-            ? LibrarySettingsScreen.showCreateCookbook(context, ref)
-            : ref.read(activeLibraryProvider.notifier).select(id),
+        onSelected: (String id) =>
+            ref.read(activeLibraryProvider.notifier).select(id),
         itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
           ...libraries.map((Library k) => PopupMenuItem<String>(
                 value: k.id,
                 child: Text(k.name),
               )),
-          const PopupMenuDivider(),
-          const PopupMenuItem<String>(
-            value: _newCookbook,
-            child: Text('New cookbook'),
-          ),
         ],
       );
     }
@@ -285,7 +279,7 @@ class LibrarySwitcher extends ConsumerWidget {
       initialValue: active?.id,
       isExpanded: true,
       decoration: const InputDecoration(
-        labelText: 'Cookbook',
+        labelText: 'Recipe book',
         prefixIcon: Icon(Icons.menu_book_outlined),
         contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       ),
@@ -294,18 +288,9 @@ class LibrarySwitcher extends ConsumerWidget {
               value: k.id,
               child: Text(k.name, overflow: TextOverflow.ellipsis),
             )),
-        const DropdownMenuItem<String>(
-          value: _newCookbook,
-          child: Text('+ New cookbook'),
-        ),
       ],
       onChanged: (String? id) {
-        if (id == null) return;
-        if (id == _newCookbook) {
-          LibrarySettingsScreen.showCreateCookbook(context, ref);
-        } else {
-          ref.read(activeLibraryProvider.notifier).select(id);
-        }
+        if (id != null) ref.read(activeLibraryProvider.notifier).select(id);
       },
     );
   }

@@ -13,7 +13,7 @@ Open it here: **https://andrewy3955.github.io/FoodBook/**
 
 ### Recipes
 - Save recipes with photos, ingredients, steps, serving size, prep and cook time, cuisine, diet labels (vegetarian, gluten-free and so on) and a nutrition label.
-- Sort recipes into **albums** such as "Weeknight Dinners" or "Holiday Baking". Every cookbook starts with a "General" album. You can add, rename and delete albums at any time. Deleting an album never deletes its recipes.
+- Sort recipes into **albums** such as "Weeknight Dinners" or "Holiday Baking". Every recipe book starts with a "General" album. You can add, rename and delete albums at any time. Deleting an album never deletes its recipes.
 - Search, filter by meal, season, cuisine or diet, and switch between a picture grid and a simple list.
 - Scale a recipe up or down and the ingredient amounts change with it.
 - Share a recipe with everyone on **Discover**, or keep it private.
@@ -38,17 +38,17 @@ Open it here: **https://andrewy3955.github.io/FoodBook/**
 - Tap the heart-monitor icon in the top bar for your **Nutrition** page: log recipes or quick-add foods to a daily diary by meal, and see calories remaining, macros and vitamins as % of your daily target.
 - Set your own daily calories, carb/protein/fat split, fiber, sugar and sodium goals (with presets and a calorie calculator). The Trends tab charts your intake over time. Your diary and goals are private to you.
 
-### Cookbooks and sharing
-- You can belong to as many cookbooks as you like and switch between them.
-- Invite family or friends with a one-time code. Everyone in a cookbook sees the same recipes, pantry, plan and list.
-- If you leave a cookbook and you were the only member, the cookbook is deleted. The owner can also delete a cookbook for good after confirming. This cannot be undone.
+### Sharing
+- Your recipes live in one place, organized into albums. There is nothing to manage in Settings for that.
+- Invite family or friends with a one-time code. Everyone sharing a recipe book sees the same recipes, pantry, plan and list. If you join someone else's, a switcher appears so you can move between books.
+- Leaving a shared book is in Settings. If you were the only member, it is deleted.
 
 ---
 
 ## Getting started
 
 1. **Create an account** with your email and a password. Confirm it from the email we send you. If it doesn't arrive, tap *Resend* (available again after 60 seconds).
-2. **Start a cookbook**, or join one with an invitation code.
+2. **Start cooking**, or join a shared recipe book with an invitation code.
 3. **Add a recipe** from the Recipes tab with the *Add recipe* button.
 4. **Fill your pantry** on the Pantry tab with the *Add to pantry* button.
 5. **Plan and shop**: add meals on the Plan tab, then open Shopping.
@@ -63,7 +63,7 @@ Open it here: **https://andrewy3955.github.io/FoodBook/**
 | **Shopping** | What to buy, with a tick-off list |
 | **Pantry** | What you have, and what you can cook with it |
 
-Settings (the gear at the top) holds your cookbook name, members and invitations, and your account.
+Settings (the gear at the top) holds sharing (members, invitations, joining or leaving a shared book) and your account.
 
 ---
 
@@ -71,7 +71,7 @@ Settings (the gear at the top) holds your cookbook name, members and invitations
 
 - Changing your password requires confirming by email.
 - **Sign out** and **Delete account** are in Settings, under Account. Deleting your account removes your recipes, photos, pantry and plans for good.
-- You only ever see cookbooks you belong to. Recipes are private unless you choose to share them to Discover.
+- You only ever see recipe books you belong to. Recipes are private unless you choose to share them to Discover.
 
 ---
 
