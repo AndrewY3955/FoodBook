@@ -110,7 +110,14 @@ class _Toolbar extends ConsumerWidget {
               icon: const Icon(Icons.add),
               label: const Text('Add'),
             ),
+            TextButton.icon(
+              onPressed: () =>
+                  ref.read(shoppingListProvider.notifier).clearChecked(),
+              icon: const Icon(Icons.cleaning_services_outlined),
+              label: const Text('Clear ticked items'),
+            ),
             PopupMenuButton<String>(
+              tooltip: 'More shopping list actions',
               onSelected: (String value) async {
                 if (value == 'clear') {
                   await ref.read(shoppingListProvider.notifier).clearChecked();

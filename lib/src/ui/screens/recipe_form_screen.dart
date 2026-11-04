@@ -421,9 +421,10 @@ class _BasicsPane extends ConsumerWidget {
                 keyboardType: TextInputType.number,
                 inputFormatters: <TextInputFormatter>[
                   FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(3),
                 ],
-                onChanged: (String v) =>
-                    controller.setBaseServings(int.tryParse(v) ?? 4),
+                onChanged: (String v) => controller
+                    .setBaseServings((int.tryParse(v) ?? 4).clamp(1, 100)),
               ),
             ),
             const SizedBox(width: 8),
@@ -434,6 +435,7 @@ class _BasicsPane extends ConsumerWidget {
                 keyboardType: TextInputType.number,
                 inputFormatters: <TextInputFormatter>[
                   FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(4),
                 ],
                 onChanged: (String v) =>
                     controller.setPrepMinutes(int.tryParse(v)),
@@ -447,6 +449,7 @@ class _BasicsPane extends ConsumerWidget {
                 keyboardType: TextInputType.number,
                 inputFormatters: <TextInputFormatter>[
                   FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(4),
                 ],
                 onChanged: (String v) =>
                     controller.setCookMinutes(int.tryParse(v)),

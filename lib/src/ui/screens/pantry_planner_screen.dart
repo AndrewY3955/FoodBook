@@ -31,7 +31,7 @@ class PantryPlannerScreen extends ConsumerWidget {
                 TabBar(
                   tabs: <Widget>[
                     Tab(text: 'This week'),
-                    Tab(text: 'Pantry'),
+                    Tab(text: 'Cupboard & ideas'),
                   ],
                 ),
                 Expanded(
@@ -256,7 +256,7 @@ class _DayColumn extends ConsumerWidget {
             TextButton.icon(
               onPressed: () => _planSomething(context, ref, day),
               icon: const Icon(Icons.add, size: 18),
-              label: const Text('Plan'),
+              label: const Text('Add meal'),
             ),
           ],
         ),
@@ -422,10 +422,10 @@ class _PantryPane extends ConsumerWidget {
             Expanded(
               child: Text('In the cupboard', style: theme.textTheme.titleLarge),
             ),
-            IconButton(
-              tooltip: 'Add to cupboard',
-              icon: const Icon(Icons.add),
+            TextButton.icon(
               onPressed: () => _addToPantry(context, ref),
+              icon: const Icon(Icons.add),
+              label: const Text('Add to cupboard'),
             ),
           ],
         ),
@@ -475,6 +475,7 @@ class _PantryPane extends ConsumerWidget {
     final TextEditingController search = TextEditingController();
     final TextEditingController quantity = TextEditingController(text: '1');
     String query = '';
+    MeasureUnit? unit;
 
     await showModalBottomSheet<void>(
       context: context,
@@ -515,6 +516,27 @@ class _PantryPane extends ConsumerWidget {
                         ),
                       ),
                     ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 2,
+                      child: DropdownButtonFormField<MeasureUnit?>(
+                        initialValue: unit,
+                        isExpanded: true,
+                        decoration: const InputDecoration(labelText: 'Unit'),
+                        items: <DropdownMenuItem<MeasureUnit?>>[
+                          const DropdownMenuItem<MeasureUnit?>(
+                            child: Text('Usual'),
+                          ),
+                          for (final MeasureUnit u in MeasureUnit.values)
+                            DropdownMenuItem<MeasureUnit?>(
+                              value: u,
+                              child: Text(u.name),
+                            ),
+                        ],
+                        onChanged: (MeasureUnit? v) =>
+                            setSheetState(() => unit = v),
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -546,7 +568,7 @@ class _PantryPane extends ConsumerWidget {
                                       .upsert(
                                         ingredientId: i.id,
                                         quantity: amount,
-                                        unit: i.defaultUnit,
+                                        unit: unit ?? i.defaultUnit,
                                       );
                                   if (context.mounted) {
                                     Navigator.of(context).pop();
