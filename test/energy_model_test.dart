@@ -61,6 +61,22 @@ void main() {
       expect(computeBmr(f).kcal, closeTo(1370.25, 1e-9));
     });
 
+    test('reported example uses a conservative light-activity estimate', () {
+      final double kg = weightToKg(190, WeightUnit.lb);
+      final double cm = heightToCm(HeightUnit.feetInches, 5, inches: 6);
+      final EnergyProfile p = EnergyProfile(
+        sex: Sex.male,
+        ageYears: 20,
+        weightKg: kg,
+        heightCm: cm,
+        activity: ActivityLevel.light,
+      );
+      expect(computeBmr(p).kcal, closeTo(1814.58, 0.01));
+      expect(formulaTdee(p).tdee, closeTo(2268.22, 0.02));
+      expect(formulaTdee(p.copyWith(activity: ActivityLevel.sedentary)).tdee,
+          closeTo(2177.49, 0.02));
+    });
+
     test('Revised Harris-Benedict', () {
       expect(computeBmr(male(eq: BmrEquation.revisedHarrisBenedict)).kcal,
           closeTo(1853.632, 1e-9));
@@ -150,10 +166,10 @@ void main() {
     test('every multiplier', () {
       const List<double> expected = <double>[
         2136.0,
-        2447.5,
-        2759.0,
-        3070.5,
-        3382.0
+        2225.0,
+        2581.0,
+        2848.0,
+        3115.0,
       ];
       for (int i = 0; i < ActivityLevel.values.length; i++) {
         final ActivityLevel a = ActivityLevel.values[i];
@@ -161,7 +177,7 @@ void main() {
             reason: a.label);
       }
       expect(ActivityLevel.values.map((ActivityLevel a) => a.factor),
-          <double>[1.2, 1.375, 1.55, 1.725, 1.9]);
+          <double>[1.2, 1.25, 1.45, 1.6, 1.75]);
     });
 
     test('every level has an explanation', () {
@@ -247,7 +263,7 @@ void main() {
     test('results are not clamped or rounded internally', () {
       final double v =
           formulaTdee(male(w: 81.234, a: ActivityLevel.light)).tdee;
-      expect(v, closeTo((10 * 81.234 + 6.25 * 180 - 150 + 5) * 1.375, 1e-9));
+      expect(v, closeTo((10 * 81.234 + 6.25 * 180 - 150 + 5) * 1.25, 1e-9));
       expect(v, isNot(v.roundToDouble()));
       expect(roundKcal(2447.5), 2450);
       expect(roundKcal(2447.5, step: 10), 2450);
@@ -374,7 +390,7 @@ void main() {
 
   group('recommendation', () {
     test('formula is preserved and recommendation moves toward data', () {
-      // Person who truly burns about 2600 but the formula says ~2759.
+      // Person who truly burns about 2400 but the formula says ~2581.
       final s = simulate(trueTdee: 2400, intakeKcal: 2400, noise: 0.1);
       final EnergyProfile p = male(a: ActivityLevel.moderate);
       final MaintenanceEstimate e =
@@ -403,8 +419,8 @@ void main() {
       final EnergyProfile p = male(a: ActivityLevel.moderate);
       final MaintenanceEstimate e = estimateMaintenance(
           p, s.intake, s.weights, endOf(28),
-          previousRecommended: 2759);
-      expect((e.recommended - 2759).abs(), lessThanOrEqualTo(100.0001));
+          previousRecommended: 2581);
+      expect((e.recommended - 2581).abs(), lessThanOrEqualTo(100.0001));
     });
 
     test('formula tracks a change in body weight', () {

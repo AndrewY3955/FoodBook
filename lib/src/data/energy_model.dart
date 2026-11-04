@@ -92,19 +92,19 @@ enum BmrEquation {
   final String description;
 }
 
-/// Standard multipliers. The descriptions are deliberately conservative:
-/// most people overestimate how active they are, and picking one level too
-/// high adds roughly 150 to 250 kcal a day of error.
+/// Conservative app-specific activity multipliers for an initial estimate.
+/// These are heuristics, not clinically validated standards. Calibrate against
+/// several weeks of intake and weight data when available.
 enum ActivityLevel {
   sedentary(1.2, 'Sedentary',
       'Desk job or mostly sitting, under about 5,000 steps a day, little or no deliberate exercise.'),
-  light(1.375, 'Lightly active',
+  light(1.25, 'Lightly active',
       'On your feet some of the day or about 5,000 to 7,500 steps, with 1 to 3 easy workouts a week.'),
-  moderate(1.55, 'Moderately active',
+  moderate(1.45, 'Moderately active',
       'Mostly on your feet or about 7,500 to 10,000 steps, with 3 to 5 solid workouts a week.'),
-  very(1.725, 'Very active',
+  very(1.6, 'Very active',
       'Physical job or 10,000+ steps, with 6 to 7 hard workouts a week.'),
-  extreme(1.90, 'Extremely active',
+  extreme(1.75, 'Extremely active',
       'Heavy manual labor or two training sessions a day on most days. Rare. If unsure, choose a lower level.');
 
   const ActivityLevel(this.factor, this.label, this.description);

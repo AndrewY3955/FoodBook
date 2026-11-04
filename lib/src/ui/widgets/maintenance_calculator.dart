@@ -29,8 +29,6 @@ class _MaintenanceCalculatorState extends ConsumerState<MaintenanceCalculator> {
   WeightUnit _unit = WeightUnit.lb;
   HeightUnit _heightUnit = HeightUnit.feetInches;
   ActivityLevel _activity = ActivityLevel.sedentary;
-  BmrEquation _equation = BmrEquation.mifflinStJeor;
-  bool _bfMeasured = false;
   int _goalDelta = 0;
 
   final TextEditingController _age = TextEditingController();
@@ -38,7 +36,6 @@ class _MaintenanceCalculatorState extends ConsumerState<MaintenanceCalculator> {
   final TextEditingController _cm = TextEditingController();
   final TextEditingController _ft = TextEditingController();
   final TextEditingController _inch = TextEditingController();
-  final TextEditingController _bf = TextEditingController();
   final TextEditingController _weighIn = TextEditingController();
   final TextEditingController _steps = TextEditingController(text: '6000');
   final TextEditingController _workouts = TextEditingController(text: '2');
@@ -52,7 +49,6 @@ class _MaintenanceCalculatorState extends ConsumerState<MaintenanceCalculator> {
       _cm,
       _ft,
       _inch,
-      _bf,
       _weighIn,
       _steps,
       _workouts,
@@ -71,15 +67,12 @@ class _MaintenanceCalculatorState extends ConsumerState<MaintenanceCalculator> {
     _sex = p.sex;
     _unit = p.weightUnit;
     _activity = p.activity;
-    _equation = p.equation;
-    _bfMeasured = p.bodyFatMeasured;
     _age.text = '${p.ageYears}';
     _weight.text = _showWeight(p.weightKg);
     _cm.text = fmtNum(p.heightCm);
     final double totalIn = p.heightCm / cmPerInch;
     _ft.text = '${totalIn ~/ 12}';
     _inch.text = fmtNum(totalIn - (totalIn ~/ 12) * 12);
-    _bf.text = p.bodyFatPercent == null ? '' : fmtNum(p.bodyFatPercent!);
     _heightUnit =
         p.weightUnit == WeightUnit.kg ? HeightUnit.cm : HeightUnit.feetInches;
   }
@@ -98,17 +91,13 @@ class _MaintenanceCalculatorState extends ConsumerState<MaintenanceCalculator> {
         ? heightToCm(HeightUnit.cm, _num(_cm, 'height'))
         : heightToCm(HeightUnit.feetInches, _num(_ft, 'height (feet)'),
             inches: _inch.text.trim().isEmpty ? 0 : _num(_inch, 'height'));
-    final double? bf =
-        _bf.text.trim().isEmpty ? null : _num(_bf, 'body fat percentage');
     final BodyProfile p = BodyProfile(
       sex: _sex,
       ageYears: age.round(),
       heightCm: cm,
       weightKg: kg,
       activity: _activity,
-      equation: _equation,
-      bodyFatPercent: bf,
-      bodyFatMeasured: _bfMeasured,
+      equation: BmrEquation.mifflinStJeor,
       weightUnit: _unit,
     );
     p.toEnergyProfile();
@@ -302,15 +291,19 @@ class _MaintenanceCalculatorState extends ConsumerState<MaintenanceCalculator> {
             decoration: const InputDecoration(labelText: 'Activity level'),
             items: <DropdownMenuItem<ActivityLevel>>[
               for (final ActivityLevel a in ActivityLevel.values)
-                DropdownMenuItem<ActivityLevel>(
-                    value: a, child: Text('${a.label} (x${a.factor})')),
+                DropdownMenuItem<ActivityLevel>(value: a, child: Text(a.label)),
             ],
             onChanged: (ActivityLevel? v) =>
                 setState(() => _activity = v ?? _activity),
           ),
           Padding(
             padding: const EdgeInsets.only(top: 4),
-            child: Text(_activity.description, style: text.bodySmall),
+            child: Text(
+              '${_activity.description} '
+              'This is a conservative starting estimate, not a medical '
+              'measurement; your actual maintenance can differ.',
+              style: text.bodySmall,
+            ),
           ),
           ExpansionTile(
             tilePadding: EdgeInsets.zero,
@@ -339,35 +332,15 @@ class _MaintenanceCalculatorState extends ConsumerState<MaintenanceCalculator> {
               const SizedBox(height: 8),
             ],
           ),
-          DropdownButtonFormField<BmrEquation>(
-            key: ValueKey<BmrEquation>(_equation),
-            initialValue: _equation,
-            isExpanded: true,
-            decoration: const InputDecoration(labelText: 'Equation'),
-            items: <DropdownMenuItem<BmrEquation>>[
-              for (final BmrEquation e in BmrEquation.values)
-                DropdownMenuItem<BmrEquation>(value: e, child: Text(e.label)),
-            ],
-            onChanged: (BmrEquation? v) =>
-                setState(() => _equation = v ?? _equation),
-          ),
           Padding(
             padding: const EdgeInsets.only(top: 4),
-            child: Text(_equation.description, style: text.bodySmall),
+            child: Text(
+              'Using Mifflin–St Jeor, a commonly used adult resting-energy '
+              'equation. It estimates resting needs; the activity adjustment '
+              'is approximate.',
+              style: text.bodySmall,
+            ),
           ),
-          const SizedBox(height: 12),
-          Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: <Widget>[
-                _field(_bf, 'Body fat (optional)', 160, suffix: '%'),
-                FilterChip(
-                  label: const Text('This was measured'),
-                  selected: _bfMeasured,
-                  onSelected: (bool v) => setState(() => _bfMeasured = v),
-                ),
-              ]),
           const SizedBox(height: 12),
           Align(
             alignment: Alignment.centerLeft,
@@ -418,7 +391,7 @@ class _MaintenanceCalculatorState extends ConsumerState<MaintenanceCalculator> {
       BodyProfile profile, List<WeighIn> weighIns) {
     final TextTheme text = Theme.of(context).textTheme;
     final CalibrationResult c = est.calibration;
-    final int maintenance = roundKcal(est.recommended);
+    final int maintenance = roundKcal(est.recommended, step: 50);
     final int target = (maintenance + _goalDelta).clamp(1200, 6000);
     final double? unc = c.uncertaintyKcal;
 
@@ -449,13 +422,29 @@ class _MaintenanceCalculatorState extends ConsumerState<MaintenanceCalculator> {
       Wrap(spacing: 8, runSpacing: 4, children: <Widget>[
         Chip(
             label: Text(
-                'Formula: ${roundKcal(est.formula.tdee)} (BMR ${roundKcal(est.formula.bmr.kcal, step: 5)} x ${est.formula.factor})')),
+                'Formula: ${roundKcal(est.formula.tdee, step: 50)} (BMR ${roundKcal(est.formula.bmr.kcal, step: 50)} x ${est.formula.factor})')),
         if (c.empiricalTdee != null)
           Chip(
-              label: Text('From your data: ${roundKcal(c.empiricalTdee!)}'
-                  '${unc == null ? '' : ' ± ${roundKcal(unc)}'}')),
-        Chip(label: Text('Data confidence: ${c.confidence.label}')),
+              label: Text(
+                  'From your data: ${roundKcal(c.empiricalTdee!, step: 50)}'
+                  '${unc == null ? '' : ' ± ${roundKcal(unc, step: 50)}'}')),
+        Chip(label: Text('Tracking-data signal: ${c.confidence.label}')),
       ]),
+      Padding(
+        padding: const EdgeInsets.only(top: 6),
+        child: Text(
+          'These are estimates, not clinical measurements. Mifflin-St Jeor '
+          'predicts resting energy; the activity multiplier only approximates '
+          'total daily needs. The tracking-data signal is an app heuristic, '
+          'not a clinically validated confidence level. Your data estimate '
+          'uses reported food and scale entries, so missed food and fluid '
+          'changes can affect it. The ± value reflects weight-trend scatter '
+          'only, not total uncertainty or a clinical confidence interval. '
+          'For medical nutrition needs, consult a clinician or dietitian; '
+          'indirect calorimetry can measure resting energy expenditure.',
+          style: text.bodySmall,
+        ),
+      ),
       for (final String r in <String>[
         ...c.reasons,
         ...est.flags,
