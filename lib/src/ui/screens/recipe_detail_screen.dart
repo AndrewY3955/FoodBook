@@ -8,6 +8,7 @@ import '../../platform/native_timer.dart';
 import '../../state/cooking_session_controller.dart';
 import '../../state/discover_controller.dart';
 import '../../state/library_controller.dart';
+import '../../state/meal_plan_controller.dart';
 import '../../state/portion_scaler.dart';
 import '../../state/providers.dart';
 import '../../state/recipe_controllers.dart';
@@ -42,13 +43,57 @@ class RecipeDetailScreen extends ConsumerWidget {
   }
 }
 
-class _Loaded extends ConsumerWidget {
+class _Loaded extends ConsumerStatefulWidget {
   const _Loaded({required this.recipe});
 
   final Recipe recipe;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_Loaded> createState() => _LoadedState();
+}
+
+class _LoadedState extends ConsumerState<_Loaded> {
+  final ScrollController _scroll = ScrollController();
+  final GlobalKey _startKey = GlobalKey();
+  bool _barVisible = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scroll.addListener(_syncBar);
+  }
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  /// The in-page Start cooking button and the bottom bar are never shown
+  /// together: the bar appears only once the button has scrolled away.
+  void _syncBar() {
+    final RenderObject? box = _startKey.currentContext?.findRenderObject();
+    if (box is! RenderBox || !box.attached) return;
+    final double bottom =
+        box.localToGlobal(Offset.zero).dy + box.size.height;
+    final bool gone = bottom < kToolbarHeight;
+    if (gone != _barVisible) setState(() => _barVisible = gone);
+  }
+
+  void _startCooking(int servings) {
+    ref
+        .read(cookingSessionProvider.notifier)
+        .start(widget.recipe, servings: servings);
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => CookingModeScreen(recipeId: widget.recipe.id),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final Recipe recipe = widget.recipe;
     final int servings = ref.watch(servingsProvider(recipe.id));
     final String? activeLibrary = ref.watch(activeLibraryIdProvider);
     final bool isOwn = recipe.libraryId == activeLibrary;
@@ -68,51 +113,84 @@ class _Loaded extends ConsumerWidget {
         );
         final Widget steps = _StepPanel(recipe: recipe);
 
+        final bool hasSteps = recipe.sortedSteps.isNotEmpty;
+        final double heroHeight = MediaQuery.sizeOf(context).height * 0.35;
+
         final Widget scroll = CustomScrollView(
+          controller: _scroll,
           slivers: <Widget>[
-            SliverAppBar.large(
+            SliverAppBar(
               pinned: true,
-              expandedHeight: scope.isPhone ? 220 : 280,
-              actions: <Widget>[
-                if (isOwn)
-                  IconButton(
-                    tooltip: 'Edit',
-                    icon: const Icon(Icons.edit_outlined),
-                    onPressed: () {
-                      ref.read(recipeFormProvider.notifier).loadFrom(recipe);
-                      Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => RecipeFormScreen(recipeId: recipe.id),
-                        ),
-                      );
-                    },
-                  ),
-                _OverflowMenu(recipe: recipe, isOwn: isOwn),
-              ],
-              flexibleSpace: FlexibleSpaceBar(
-                title: Text(recipe.title,
-                    maxLines: 2, overflow: TextOverflow.ellipsis),
-                titlePadding: const EdgeInsetsDirectional.only(
-                  start: 56,
-                  end: 96,
-                  bottom: 14,
-                ),
-                background: recipe.coverImagePath == null
-                    ? Builder(
-                        builder: (BuildContext inner) => Container(
-                          color: Theme.of(inner)
-                              .colorScheme
-                              .surfaceContainerHighest,
-                        ),
-                      )
-                    : _HeaderImage(path: recipe.coverImagePath!),
+              title: Text(
+                recipe.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
             SliverToBoxAdapter(
               child: ContentWidth(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: SizedBox(
+                      height: recipe.coverImagePath == null
+                          ? 160
+                          : heroHeight.clamp(180.0, 420.0),
+                      width: double.infinity,
+                      child: recipe.coverImagePath == null
+                          ? RecipeNoPhoto(recipe: recipe, large: true)
+                          : _HeaderImage(path: recipe.coverImagePath!),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: ContentWidth(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                   child: _Header(recipe: recipe),
+                ),
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: ContentWidth(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      FilledButton.icon(
+                        key: _startKey,
+                        onPressed:
+                            hasSteps ? () => _startCooking(servings) : null,
+                        icon: const Icon(Icons.local_fire_department_outlined),
+                        label: const Text('Start cooking'),
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size.fromHeight(56),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        children: <Widget>[
+                          OutlinedButton.icon(
+                            onPressed: () => _showPlanOrShop(
+                              context,
+                              ref,
+                              recipe,
+                              servings,
+                            ),
+                            icon: const Icon(Icons.event_available_outlined),
+                            label: const Text('Plan or add to shopping list'),
+                          ),
+                          _ManageMenu(recipe: recipe, isOwn: isOwn),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -169,7 +247,37 @@ class _Loaded extends ConsumerWidget {
           ],
         );
 
-        return _Themed(recipe: recipe, child: scroll);
+        final Widget body = Stack(
+          children: <Widget>[
+            Positioned.fill(child: scroll),
+            if (_barVisible && hasSteps)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: Material(
+                  elevation: 8,
+                  color: Theme.of(context).colorScheme.surface,
+                  child: SafeArea(
+                    top: false,
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: FilledButton.icon(
+                        onPressed: () => _startCooking(servings),
+                        icon: const Icon(Icons.local_fire_department_outlined),
+                        label: const Text('Start cooking'),
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size.fromHeight(56),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+
+        return _Themed(recipe: recipe, child: body);
       },
     );
   }
@@ -572,33 +680,76 @@ class _IngredientPanel extends ConsumerWidget {
             ),
           ),
 
-        const SizedBox(height: 16),
-        FilledButton.tonalIcon(
-          onPressed: () async {
-            final int touched = await ref
-                .read(shoppingListProvider.notifier)
-                .addRecipe(recipeId: recipe.id, servings: servings);
-            if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    touched == 0
-                        ? 'Your pantry already covers this one.'
-                        : '$touched item${touched == 1 ? '' : 's'} added to the shopping list.',
-                  ),
-                ),
-              );
-            }
-          },
-          icon: const Icon(Icons.add_shopping_cart),
-          label: const Text('Add what I am missing'),
-          style: FilledButton.styleFrom(
-            minimumSize: const Size.fromHeight(48),
-          ),
-        ),
       ],
     );
   }
+}
+
+Future<void> _showPlanOrShop(
+  BuildContext context,
+  WidgetRef ref,
+  Recipe recipe,
+  int servings,
+) async {
+  final String? choice = await showModalBottomSheet<String>(
+    context: context,
+    builder: (BuildContext sheet) => SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          ListTile(
+            minVerticalPadding: 16,
+            leading: const Icon(Icons.event_available_outlined),
+            title: const Text('Add to this week\u2019s plan'),
+            onTap: () => Navigator.of(sheet).pop('plan'),
+          ),
+          ListTile(
+            minVerticalPadding: 16,
+            leading: const Icon(Icons.add_shopping_cart),
+            title: const Text('Add ingredients to shopping list'),
+            subtitle: const Text('Only what your cupboard is missing'),
+            onTap: () => Navigator.of(sheet).pop('shop'),
+          ),
+        ],
+      ),
+    ),
+  );
+  if (choice == null || !context.mounted) return;
+  final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+  if (choice == 'shop') {
+    final int touched = await ref
+        .read(shoppingListProvider.notifier)
+        .addRecipe(recipeId: recipe.id, servings: servings);
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          touched == 0
+              ? 'Your cupboard already covers this one.'
+              : '$touched item${touched == 1 ? '' : 's'} added to the shopping list.',
+        ),
+      ),
+    );
+    return;
+  }
+
+  final DateTime today = DateTime.now();
+  final DateTime? date = await showDatePicker(
+    context: context,
+    initialDate: today,
+    firstDate: today.subtract(const Duration(days: 30)),
+    lastDate: today.add(const Duration(days: 365)),
+    helpText: 'Which day?',
+  );
+  if (date == null || !context.mounted) return;
+  await ref.read(mealPlanProvider.notifier).add(
+        recipeId: recipe.id,
+        date: DateTime(date.year, date.month, date.day),
+        mealType: recipe.mealType,
+        servingsOverride: servings,
+      );
+  messenger.showSnackBar(
+    const SnackBar(content: Text('Added to your plan.')),
+  );
 }
 
 class _StepPanel extends ConsumerWidget {
@@ -610,34 +761,11 @@ class _StepPanel extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final ThemeData theme = Theme.of(context);
     final List<RecipeStep> steps = recipe.sortedSteps;
-    final int servings = ref.watch(servingsProvider(recipe.id));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        Row(
-          children: <Widget>[
-            Text('Method', style: theme.textTheme.titleLarge),
-            const Spacer(),
-            FilledButton.icon(
-              onPressed: steps.isEmpty
-                  ? null
-                  : () {
-                      ref
-                          .read(cookingSessionProvider.notifier)
-                          .start(recipe, servings: servings);
-                      Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) =>
-                              CookingModeScreen(recipeId: recipe.id),
-                        ),
-                      );
-                    },
-              icon: const Icon(Icons.local_fire_department_outlined),
-              label: const Text('Start cooking'),
-            ),
-          ],
-        ),
+        Text('Method', style: theme.textTheme.titleLarge),
         const SizedBox(height: 12),
         for (final RecipeStep step in steps)
           Padding(
@@ -646,12 +774,13 @@ class _StepPanel extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 CircleAvatar(
-                  radius: 14,
+                  radius: 18,
                   backgroundColor: theme.colorScheme.secondaryContainer,
                   child: Text(
                     '${step.stepNumber}',
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
                       color: theme.colorScheme.onSecondaryContainer,
                     ),
                   ),
@@ -716,8 +845,8 @@ class TimerButton extends StatelessWidget {
   }
 }
 
-class _OverflowMenu extends ConsumerWidget {
-  const _OverflowMenu({required this.recipe, required this.isOwn});
+class _ManageMenu extends ConsumerWidget {
+  const _ManageMenu({required this.recipe, required this.isOwn});
 
   final Recipe recipe;
   final bool isOwn;
@@ -725,9 +854,33 @@ class _OverflowMenu extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return PopupMenuButton<String>(
+      tooltip: 'Manage recipe',
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 48),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(
+          border: Border.all(color: Theme.of(context).colorScheme.outline),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Icon(Icons.tune),
+            SizedBox(width: 8),
+            Text('Manage recipe'),
+          ],
+        ),
+      ),
       onSelected: (String value) async {
         final String? libraryId = ref.read(activeLibraryIdProvider);
         switch (value) {
+          case 'edit':
+            ref.read(recipeFormProvider.notifier).loadFrom(recipe);
+            Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => RecipeFormScreen(recipeId: recipe.id),
+              ),
+            );
           case 'fork':
             if (libraryId == null) return;
             final String newId = await ref
@@ -788,15 +941,6 @@ class _OverflowMenu extends ConsumerWidget {
         }
       },
       itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-        const PopupMenuItem<String>(
-          value: 'fork',
-          child: ListTile(
-            leading: Icon(Icons.call_split),
-            title: Text('Fork into my library'),
-            subtitle: Text('Text, notes, photos and style'),
-            contentPadding: EdgeInsets.zero,
-          ),
-        ),
         if (isOwn)
           PopupMenuItem<String>(
             value: 'share',
@@ -809,10 +953,31 @@ class _OverflowMenu extends ConsumerWidget {
           ),
         if (isOwn)
           const PopupMenuItem<String>(
+            value: 'edit',
+            child: ListTile(
+              leading: Icon(Icons.edit_outlined),
+              title: Text('Edit'),
+              contentPadding: EdgeInsets.zero,
+            ),
+          ),
+        const PopupMenuItem<String>(
+          value: 'fork',
+          child: ListTile(
+            leading: Icon(Icons.call_split),
+            title: Text('Make my own copy'),
+            subtitle: Text('Text, notes, photos and style'),
+            contentPadding: EdgeInsets.zero,
+          ),
+        ),
+        if (isOwn) const PopupMenuDivider(),
+        if (isOwn)
+          PopupMenuItem<String>(
             value: 'delete',
             child: ListTile(
-              leading: Icon(Icons.delete_outline),
-              title: Text('Delete'),
+              leading: Icon(Icons.delete_outline,
+                  color: Theme.of(context).colorScheme.error),
+              title: Text('Delete recipe',
+                  style: TextStyle(color: Theme.of(context).colorScheme.error)),
               contentPadding: EdgeInsets.zero,
             ),
           ),
