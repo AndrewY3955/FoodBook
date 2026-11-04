@@ -177,16 +177,15 @@ class RecipeRepository {
   /// One round trip for the card grid. Ingredients and steps are left
   /// out here on purpose — pulling every step of every recipe to render
   /// a list of titles is the single easiest way to make this screen slow.
-  static const String _listColumns =
+  static final String _listColumns =
       'id, library_id, title, description, meal_type, season, '
       'base_servings, prep_minutes, cook_minutes, cover_image_path, '
       'source_url, external_video_url, import_source, is_public, '
       'forked_from_recipe_id, created_at, album_id, cuisine, theme, accent_color, '
-      'background_image_path, diets, calories, protein_g, carbs_g, fat_g, '
-      'fiber_g, sugar_g, sodium_mg, '
+      'background_image_path, diets, $kNutritionColumns, '
       'recipe_tags(tags(name))';
 
-  static const String _detailColumns = '$_listColumns, '
+  static final String _detailColumns = '$_listColumns, '
       'recipe_ingredients(id, ingredient_id, quantity, unit, note, is_optional, '
       'sort_order, ingredients(name, grocery_category)), '
       'recipe_steps(id, step_number, instruction, timer_seconds), '
@@ -298,12 +297,11 @@ class RecipeRepository {
     }
   }
 
-  static const String _feedColumns =
+  static final String _feedColumns =
       'id, library_id, title, description, meal_type, season, '
       'base_servings, prep_minutes, cook_minutes, cover_image_path, '
       'import_source, is_public, forked_from_recipe_id, created_at, '
-      'cuisine, theme, accent_color, diets, calories, protein_g, carbs_g, '
-      'fat_g, fiber_g, sugar_g, sodium_mg';
+      'cuisine, theme, accent_color, diets, $kNutritionColumns';
 
   Future<Recipe> byId(String recipeId) async {
     try {
@@ -373,13 +371,7 @@ class RecipeRepository {
       'theme': draft.theme.wire,
       'accent_color': draft.accentColor,
       'diets': draft.diets.map((Diet d) => d.wire).toSet().toList(),
-      'calories': draft.nutrition.calories?.clamp(0, 5000),
-      'protein_g': draft.nutrition.proteinG?.clamp(0, 500),
-      'carbs_g': draft.nutrition.carbsG?.clamp(0, 500),
-      'fat_g': draft.nutrition.fatG?.clamp(0, 500),
-      'fiber_g': draft.nutrition.fiberG?.clamp(0, 500),
-      'sugar_g': draft.nutrition.sugarG?.clamp(0, 500),
-      'sodium_mg': draft.nutrition.sodiumMg?.clamp(0, 20000),
+      ...draft.nutrition.toJson(),
     };
 
     try {

@@ -10,6 +10,7 @@ import '../responsive/adaptive_scaffold.dart';
 import '../responsive/breakpoints.dart';
 import 'discover_screen.dart';
 import 'library_settings_screen.dart';
+import 'nutrition_screen.dart';
 import 'invitation_dialogs.dart';
 import 'pantry_planner_screen.dart';
 import 'recipe_box_screen.dart';
@@ -70,6 +71,15 @@ class _HomeShellState extends ConsumerState<HomeShell> {
           onDestinationSelected: (int i) => setState(() => _index = i),
           leadingSidebar: const LibrarySwitcher(),
           actions: <Widget>[
+            IconButton(
+              tooltip: 'Nutrition and goals',
+              icon: const Icon(Icons.monitor_heart_outlined),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const NutritionScreen(),
+                ),
+              ),
+            ),
             IconButton(
               tooltip: 'Settings',
               icon: const Icon(Icons.settings_outlined),

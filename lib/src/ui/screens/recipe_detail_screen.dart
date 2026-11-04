@@ -16,6 +16,8 @@ import '../../state/shopping_controller.dart';
 import '../responsive/adaptive_scaffold.dart';
 import '../responsive/breakpoints.dart';
 import '../widgets/diet_nutrition_section.dart' show NutritionFactsPanel;
+import '../widgets/nutrition_widgets.dart' show DailyValueBars;
+import 'nutrition_screen.dart' show logRecipeToDiary;
 import '../widgets/recipe_appearance_section.dart' show parseAccent;
 import '../widgets/recipe_card.dart';
 import 'cooking_mode_screen.dart';
@@ -185,6 +187,12 @@ class _LoadedState extends ConsumerState<_Loaded> {
                             icon: const Icon(Icons.event_available_outlined),
                             label: const Text('Plan or add to shopping list'),
                           ),
+                          OutlinedButton.icon(
+                            onPressed: () =>
+                                logRecipeToDiary(context, ref, recipe),
+                            icon: const Icon(Icons.restaurant_outlined),
+                            label: const Text('Add to food diary'),
+                          ),
                           _ManageMenu(recipe: recipe, isOwn: isOwn),
                         ],
                       ),
@@ -209,9 +217,36 @@ class _LoadedState extends ConsumerState<_Loaded> {
                     padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
                     child: Align(
                       alignment: Alignment.centerLeft,
-                      child: NutritionFactsPanel(
-                        nutrition: recipe.nutrition,
-                        servings: recipe.baseServings,
+                      child: Wrap(
+                        spacing: 24,
+                        runSpacing: 16,
+                        children: <Widget>[
+                          NutritionFactsPanel(
+                            nutrition: recipe.nutrition,
+                            servings: recipe.baseServings,
+                          ),
+                          SizedBox(
+                            width: 320,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                Text(
+                                  'Vitamins and minerals per serving',
+                                  style:
+                                      Theme.of(context).textTheme.titleMedium,
+                                ),
+                                Text(
+                                  '% of daily value',
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                ),
+                                DailyValueBars(
+                                  values: recipe.nutrition.values,
+                                  showMissing: false,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
