@@ -34,11 +34,12 @@ class _DietNutritionSectionState extends ConsumerState<DietNutritionSection> {
   bool _busy = false;
   Map<String, String> _lastSkippedReasons = <String, String>{};
 
-  /// Best live-search match for each ingredient the built-in table missed.
-  /// Any failure just leaves that ingredient out of the estimate.
+  /// Searches ingredients the built-in table does not recognize. Every
+  /// online result requires an explicit choice; search ranking alone is not
+  /// reliable enough to assign nutrition to a recipe ingredient.
   Future<Map<String, FoodItem>> _lookUp(List<DraftIngredient> items) async {
     final FoodSearchRepository repo = ref.read(foodSearchRepositoryProvider);
-    final Map<String, FoodItem> found = <String, FoodItem>{};
+    final Map<String, FoodItem> selected = <String, FoodItem>{};
     final Iterable<String> names = items
         .where((DraftIngredient i) =>
             i.quantity > 0 &&
@@ -47,13 +48,78 @@ class _DietNutritionSectionState extends ConsumerState<DietNutritionSection> {
         .map((DraftIngredient i) => i.name)
         .toSet()
         .take(10);
+
+    final Map<String, List<FoodItem>> results = <String, List<FoodItem>>{};
     await Future.wait(names.map((String name) async {
       try {
-        final List<FoodItem> hits = await repo.search(name);
-        if (hits.isNotEmpty) found[name] = hits.first;
-      } catch (_) {}
+        results[name] = await repo.search(name);
+      } catch (_) {
+        results[name] = const <FoodItem>[];
+      }
     }));
-    return found;
+
+    // Keep the prompts sequential so each ingredient has a clear decision.
+    for (final String name in names) {
+      if (!mounted) break;
+      final List<FoodItem> hits = results[name] ?? const <FoodItem>[];
+      if (hits.isEmpty) continue;
+      final FoodItem? choice = await showDialog<FoodItem>(
+        context: context,
+        builder: (BuildContext dialogContext) => AlertDialog(
+          title: Text('Choose a match for "$name"'),
+          content: SizedBox(
+            width: 440,
+            height: 420,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                const Text(
+                  'Select the food that best matches your ingredient. '
+                  'Nutrition will not be estimated from an online result '
+                  'until you choose one.',
+                ),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: hits.length,
+                    itemBuilder: (BuildContext context, int index) {
+                      final FoodItem food = hits[index];
+                      final List<String> details = <String>[
+                        food.sourceLabel,
+                        if (food.dataType.isNotEmpty) food.dataType,
+                        if (food.servingLabel != null &&
+                            food.servingLabel!.isNotEmpty)
+                          food.servingLabel!,
+                        if (food.servingGrams != null)
+                          '\${_fmt(food.servingGrams!)} g per labelled serving',
+                        if (food.per100g.calories != null)
+                          '\${food.per100g.calories} kcal / 100 g',
+                        if (food.per100g.proteinG != null)
+                          '\${_fmt(food.per100g.proteinG!)} g protein / 100 g',
+                      ];
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(food.displayName),
+                        subtitle: Text(details.join(' • ')),
+                        onTap: () => Navigator.of(dialogContext).pop(food),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Skip this ingredient'),
+            ),
+          ],
+        ),
+      );
+      if (choice != null) selected[name] = choice;
+    }
+    return selected;
   }
 
   Future<void> _calculate() async {
