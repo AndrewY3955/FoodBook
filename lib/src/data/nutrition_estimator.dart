@@ -10,6 +10,7 @@ class NutritionEstimate {
     required this.nutrition,
     required this.counted,
     required this.skipped,
+    required this.skippedReasons,
   });
 
   /// Per serving.
@@ -18,6 +19,9 @@ class NutritionEstimate {
 
   /// Ingredients that could not be matched or converted to a weight.
   final List<String> skipped;
+
+  /// Human-readable explanation for each skipped ingredient name.
+  final Map<String, String> skippedReasons;
 }
 
 class NutritionEstimator {
@@ -110,22 +114,43 @@ class NutritionEstimator {
 
     final List<String> counted = <String>[];
     final List<String> skipped = <String>[];
+    final Map<String, String> skippedReasons = <String, String>{};
 
     for (final DraftIngredient i in items) {
+      if (i.unit == MeasureUnit.toTaste) continue;
+      if (i.quantity <= 0) {
+        skipped.add(i.name);
+        skippedReasons[i.name] = 'Enter an amount greater than zero.';
+        continue;
+      }
+
       final Food? f = match(i.name);
       final FoodItem? o = f == null ? online[i.name] : null;
-      if (o != null && i.quantity > 0) {
-        final double? g = gramsOnline(o, i.quantity, i.unit);
-        if (g != null) {
-          counted.add(i.name);
-          o.per100g.values.forEach((String k, double v) => add(k, v * g / 100));
+      if (o != null) {
+        final double? onlineGrams = gramsOnline(o, i.quantity, i.unit);
+        if (onlineGrams == null) {
+          final String unit =
+              i.unit.label.isEmpty ? i.unit.wire : i.unit.label;
+          skipped.add(i.name);
+          skippedReasons[i.name] =
+              'No reliable conversion from $unit to grams is available '
+              'for this food. Enter its weight in grams or use a supported '
+              'mass unit.';
           continue;
         }
+        counted.add(i.name);
+        o.per100g.values
+            .forEach((String k, double v) => add(k, v * onlineGrams / 100));
+        continue;
       }
-      final double? g =
-          f == null || i.quantity <= 0 ? null : grams(f, i.quantity, i.unit);
+
+      final double? g = f == null ? null : grams(f, i.quantity, i.unit);
       if (f == null || g == null) {
-        if (i.unit != MeasureUnit.toTaste) skipped.add(i.name);
+        skipped.add(i.name);
+        skippedReasons[i.name] = f == null
+            ? 'No matching food data was found.'
+            : 'The selected amount cannot be converted to weight using '
+                'the available food data.';
         continue;
       }
       counted.add(i.name);
@@ -161,6 +186,7 @@ class NutritionEstimator {
       nutrition: Nutrition(values: perServing),
       counted: counted,
       skipped: skipped,
+      skippedReasons: skippedReasons,
     );
   }
 }

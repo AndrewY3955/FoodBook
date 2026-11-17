@@ -110,6 +110,48 @@ void main() {
     expect(merged.servingSize, '1 bowl');
   });
 
+  test('explains why unmatched online ingredients are skipped', () {
+    final NutritionEstimate estimate = NutritionEstimator.estimate(
+      <DraftIngredient>[
+        DraftIngredient(
+          ingredientId: '',
+          name: 'unknown flour',
+          quantity: 1,
+          unit: MeasureUnit.cup,
+        ),
+        DraftIngredient(
+          ingredientId: '',
+          name: 'unlisted food',
+          quantity: 2,
+          unit: MeasureUnit.g,
+        ),
+        DraftIngredient(
+          ingredientId: '',
+          name: 'whole milk',
+          quantity: 0,
+          unit: MeasureUnit.cup,
+        ),
+      ],
+      1,
+      online: <String, FoodItem>{
+        'unknown flour': FoodItem.fromJson(<String, dynamic>{
+          'id': 'fdc:3',
+          'name': 'Unknown flour',
+          'per100g': <String, dynamic>{'calories': 364},
+        }),
+      },
+    );
+
+    expect(estimate.skipped, containsAll(<String>[
+      'unknown flour',
+      'unlisted food',
+      'whole milk',
+    ]));
+    expect(estimate.skippedReasons['unknown flour'], contains('conversion'));
+    expect(estimate.skippedReasons['unlisted food'], contains('No matching'));
+    expect(estimate.skippedReasons['whole milk'], contains('greater than zero'));
+  });
+
   test('micros survive a json round trip', () {
     final Nutrition n = const Nutrition().withValue('zinc_mg', 3.5);
     final Nutrition back = Nutrition.fromJson(n.toJson());

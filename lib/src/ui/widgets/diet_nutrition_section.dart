@@ -32,6 +32,7 @@ class _DietNutritionSectionState extends ConsumerState<DietNutritionSection> {
   int _version = 0;
 
   bool _busy = false;
+  Map<String, String> _lastSkippedReasons = <String, String>{};
 
   /// Best live-search match for each ingredient the built-in table missed.
   /// Any failure just leaves that ingredient out of the estimate.
@@ -64,13 +65,17 @@ class _DietNutritionSectionState extends ConsumerState<DietNutritionSection> {
       ));
       return;
     }
-    setState(() => _busy = true);
+    setState(() {
+      _busy = true;
+      _lastSkippedReasons = <String, String>{};
+    });
     final Map<String, FoodItem> online = await _lookUp(draft.ingredients);
     if (!mounted) return;
     setState(() => _busy = false);
     final NutritionEstimate est = NutritionEstimator.estimate(
         draft.ingredients, draft.baseServings,
         online: online);
+    setState(() => _lastSkippedReasons = est.skippedReasons);
     if (est.counted.isEmpty) {
       messenger.showSnackBar(const SnackBar(
         content: Text(
@@ -180,6 +185,30 @@ class _DietNutritionSectionState extends ConsumerState<DietNutritionSection> {
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ),
+          if (_lastSkippedReasons.isNotEmpty)
+            Card(
+              margin: const EdgeInsets.only(top: 10),
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      'Some ingredients were not included',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    const SizedBox(height: 6),
+                    for (final MapEntry<String, String> entry
+                        in _lastSkippedReasons.entries)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text('• ${entry.key}: ${entry.value}'),
+                      ),
+                  ],
+                ),
+              ),
+            ),
           SizedBox(
             width: 310,
             child: TextFormField(
