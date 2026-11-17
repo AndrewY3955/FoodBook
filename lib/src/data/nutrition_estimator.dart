@@ -11,6 +11,7 @@ class NutritionEstimate {
     required this.counted,
     required this.skipped,
     required this.skippedReasons,
+    required this.incompleteNutrients,
   });
 
   /// Per serving.
@@ -22,6 +23,9 @@ class NutritionEstimate {
 
   /// Human-readable explanation for each skipped ingredient name.
   final Map<String, String> skippedReasons;
+
+  /// Nutrients omitted because at least one counted ingredient lacks data.
+  final List<String> incompleteNutrients;
 }
 
 class NutritionEstimator {
@@ -36,20 +40,45 @@ class NutritionEstimator {
   };
 
   /// Best database match for [name]: the longest matching phrase wins.
+  /// Explicit preparation states must agree with the stored food variant.
   static Food? match(String name) {
     final String n = name.toLowerCase().replaceAll(RegExp(r'[^a-z\- ]'), ' ');
+    final String? requestedPreparation = _preparation(n);
+    final bool needsPreparation = RegExp(
+      r'\b(rice|pasta|noodles|quinoa|oats|beans?|chickpeas?|garbanzo|lentils?)\b',
+    ).hasMatch(n);
+    if (needsPreparation && requestedPreparation == null) return null;
     Food? best;
     int bestLen = 0;
     for (final MapEntry<Food, List<RegExp>> e in _patterns.entries) {
       final List<String> phrases = e.key.names.split('|');
       for (int i = 0; i < phrases.length; i++) {
-        if (phrases[i].length > bestLen && e.value[i].hasMatch(n)) {
-          best = e.key;
-          bestLen = phrases[i].length;
-        }
+        final String phrase = phrases[i];
+        if (phrase.length <= bestLen || !e.value[i].hasMatch(n)) continue;
+        final String? storedPreparation = _preparation(phrase);
+        final bool preparationMatches = requestedPreparation == 'raw/dry'
+            ? storedPreparation == null || storedPreparation == 'raw/dry'
+            : storedPreparation == requestedPreparation;
+        if (!preparationMatches) continue;
+        best = e.key;
+        bestLen = phrase.length;
       }
     }
     return best;
+  }
+
+  /// Normalize only explicit preparation words. Boiled and steamed foods
+  /// are grouped with cooked foods; other methods remain distinct.
+  static String? _preparation(String value) {
+    final String normalized = value.toLowerCase();
+    if (RegExp(r'\b(raw|dry)\b').hasMatch(normalized)) return 'raw/dry';
+    if (RegExp(r'\b(cooked|boiled|steamed)\b').hasMatch(normalized)) {
+      return 'cooked';
+    }
+    final RegExp other = RegExp(
+      r'\b(grilled|roasted|fried|baked|smoked|dried|dehydrated|canned|drained)\b',
+    );
+    return other.firstMatch(normalized)?.group(0);
   }
 
   /// Grams for [qty] of [unit] of [food], or null when it cannot be known.
@@ -109,6 +138,7 @@ class NutritionEstimator {
     Map<String, FoodItem> online = const <String, FoodItem>{},
   }) {
     final Map<String, double> sum = <String, double>{};
+    final Set<String> incompleteNutrients = <String>{};
     void add(String k, double v) => sum[k] = (sum[k] ?? 0) + v;
 
     final List<String> counted = <String>[];
@@ -138,8 +168,14 @@ class NutritionEstimator {
           continue;
         }
         counted.add(i.name);
-        o.per100g.values
-            .forEach((String k, double v) => add(k, v * onlineGrams / 100));
+        for (final NutrientDef nutrient in kAllNutrients) {
+          final double? value = o.per100g[nutrient.key];
+          if (value == null) {
+            incompleteNutrients.add(nutrient.key);
+          } else {
+            add(nutrient.key, value * onlineGrams / 100);
+          }
+        }
         continue;
       }
 
@@ -160,7 +196,7 @@ class NutritionEstimator {
       add('fat_g', f.fat * s);
       add('fiber_g', f.fiber * s);
       add('sugar_g', f.sugar * s);
-      if (f.addedSugar) add('added_sugar_g', f.sugar * s);
+      add('added_sugar_g', (f.addedSugar ? f.sugar : 0) * s);
       add('sat_fat_g', f.satFat * s);
       add('sodium_mg', f.sodium * s);
       add('cholesterol_mg', f.cholesterol * s);
@@ -169,13 +205,20 @@ class NutritionEstimator {
       add('iron_mg', f.iron * s);
       add('vitamin_c_mg', f.vitC * s);
       final List<double>? micro = kFoodMicros[f.names.split('|').first];
-      if (micro != null) {
+      if (micro == null) {
+        // An absent database row means "not reported", not zero.
+        incompleteNutrients.addAll(kMicroOrder);
+      } else {
         for (int k = 0; k < kMicroOrder.length; k++) {
           add(kMicroOrder[k], micro[k] * s);
         }
       }
     }
 
+    // Never publish a partial sum as if every ingredient had known data.
+    for (final String key in incompleteNutrients) {
+      sum.remove(key);
+    }
     final int n = servings < 1 ? 1 : servings;
     final Map<String, double> perServing = <String, double>{
       for (final MapEntry<String, double> e in sum.entries)
@@ -186,6 +229,7 @@ class NutritionEstimator {
       counted: counted,
       skipped: skipped,
       skippedReasons: skippedReasons,
+      incompleteNutrients: incompleteNutrients.toList(growable: false),
     );
   }
 }

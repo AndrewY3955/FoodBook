@@ -181,4 +181,79 @@ void main() {
     expect(g.proteinG, 100);
     expect(g.fatG.round(), 67);
   });
+
+  test('explicit preparation state never falls back to a different food form', () {
+    expect(NutritionEstimator.match('cooked rice')?.names, contains('cooked rice'));
+    expect(NutritionEstimator.match('raw rice')?.names, contains('white rice'));
+    expect(NutritionEstimator.match('cooked chicken breast'), isNull);
+    expect(NutritionEstimator.match('grilled chicken breast'), isNull);
+    expect(NutritionEstimator.match('canned black beans'), isNull);
+    expect(NutritionEstimator.match('raw chicken breast')?.names,
+        contains('chicken breast'));
+    // Dry-weight references must not be used for unqualified cooked staples.
+    expect(NutritionEstimator.match('rice'), isNull);
+    expect(NutritionEstimator.match('white rice'), isNull);
+    expect(NutritionEstimator.match('black beans'), isNull);
+    expect(NutritionEstimator.match('chickpeas'), isNull);
+    expect(NutritionEstimator.match('lentils'), isNull);
+    expect(NutritionEstimator.match('pasta'), isNull);
+    expect(NutritionEstimator.match('dry white rice')?.names,
+        contains('white rice'));
+    expect(NutritionEstimator.match('dry black beans')?.names,
+        contains('black beans'));
+  });
+
+  test('unreported micronutrients are omitted instead of treated as zero', () {
+    final NutritionEstimate estimate = NutritionEstimator.estimate(
+      <DraftIngredient>[
+        DraftIngredient(ingredientId: '', name: 'water', quantity: 100,
+            unit: MeasureUnit.g),
+        DraftIngredient(ingredientId: '', name: 'broccoli', quantity: 100,
+            unit: MeasureUnit.g),
+      ],
+      1,
+    );
+    // Water has no micronutrient record. Broccoli's values alone would
+    // understate the recipe total, so the combined total is not displayed.
+    expect(estimate.nutrition['vitamin_c_mg'], isNull);
+    expect(estimate.nutrition['protein_g'], isNotNull);
+    expect(estimate.nutrition['calories'], isNotNull);
+  });
+
+  test('online nutrient totals omit fields missing from any selected food', () {
+    FoodItem food(String id, Map<String, double> values) =>
+        FoodItem(id: id, name: id, per100g: Nutrition(values: values));
+    final NutritionEstimate estimate = NutritionEstimator.estimate(
+      <DraftIngredient>[
+        DraftIngredient(ingredientId: '', name: 'online alpha', quantity: 100,
+            unit: MeasureUnit.g),
+        DraftIngredient(ingredientId: '', name: 'online beta', quantity: 100,
+            unit: MeasureUnit.g),
+      ],
+      1,
+      online: <String, FoodItem>{
+        'online alpha': food('alpha', <String, double>{
+          'calories': 100, 'protein_g': 10, 'sodium_mg': 50,
+        }),
+        'online beta': food('beta', <String, double>{
+          'calories': 200, 'protein_g': 20,
+        }),
+      },
+    );
+    expect(estimate.nutrition['calories'], 300);
+    expect(estimate.nutrition['protein_g'], 30);
+    expect(estimate.nutrition['sodium_mg'], isNull);
+  });
+
+  test('reports nutrient fields omitted because ingredient data is incomplete', () {
+    final NutritionEstimate estimate = NutritionEstimator.estimate(
+      <DraftIngredient>[
+        DraftIngredient(ingredientId: '', name: 'water', quantity: 100,
+            unit: MeasureUnit.g),
+      ],
+      1,
+    );
+    expect(estimate.incompleteNutrients, contains('vitamin_c_mg'));
+    expect(estimate.nutrition['vitamin_c_mg'], isNull);
+  });
 }

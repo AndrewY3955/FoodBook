@@ -33,6 +33,7 @@ class _DietNutritionSectionState extends ConsumerState<DietNutritionSection> {
 
   bool _busy = false;
   Map<String, String> _lastSkippedReasons = <String, String>{};
+  List<String> _lastIncompleteNutrients = <String>[];
 
   /// Searches ingredients the built-in table does not recognize. Every
   /// online result requires an explicit choice; search ranking alone is not
@@ -134,6 +135,7 @@ class _DietNutritionSectionState extends ConsumerState<DietNutritionSection> {
     setState(() {
       _busy = true;
       _lastSkippedReasons = <String, String>{};
+      _lastIncompleteNutrients = <String>[];
     });
     final Map<String, FoodItem> online = await _lookUp(draft.ingredients);
     if (!mounted) return;
@@ -141,7 +143,10 @@ class _DietNutritionSectionState extends ConsumerState<DietNutritionSection> {
     final NutritionEstimate est = NutritionEstimator.estimate(
         draft.ingredients, draft.baseServings,
         online: online);
-    setState(() => _lastSkippedReasons = est.skippedReasons);
+    setState(() {
+      _lastSkippedReasons = est.skippedReasons;
+      _lastIncompleteNutrients = est.incompleteNutrients;
+    });
     if (est.counted.isEmpty) {
       messenger.showSnackBar(const SnackBar(
         content: Text(
@@ -251,6 +256,21 @@ class _DietNutritionSectionState extends ConsumerState<DietNutritionSection> {
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ),
+          if (_lastIncompleteNutrients.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: Text(
+                'Some nutrient totals are hidden because at least one '
+                'ingredient has no reported value for: '
+                '${_lastIncompleteNutrients
+                    .map((String key) => kAllNutrients
+                        .firstWhere((NutrientDef d) => d.key == key)
+                        .label)
+                    .join(', ')}. '
+                'This avoids presenting incomplete totals as exact values.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ),
           if (_lastSkippedReasons.isNotEmpty)
             Card(
               margin: const EdgeInsets.only(top: 10),
