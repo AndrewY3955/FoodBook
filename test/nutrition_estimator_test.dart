@@ -27,7 +27,7 @@ void main() {
     expect(e.nutrition['calcium_mg'], greaterThan(100));
   });
 
-  test('online foods fill in ingredients the built-in table lacks', () {
+  test('online serving weights are not treated as individual-piece weights', () {
     final FoodItem goo = FoodItem.fromJson(<String, dynamic>{
       'id': 'fdc:1',
       'name': 'Mystery goo',
@@ -43,16 +43,23 @@ void main() {
             unit: MeasureUnit.g),
         DraftIngredient(
             ingredientId: '',
-            name: 'mystery goo',
+            name: 'mystery goo pieces',
             quantity: 2,
             unit: MeasureUnit.piece),
       ],
       1,
-      online: <String, FoodItem>{'mystery goo': goo},
+      online: <String, FoodItem>{
+        'mystery goo': goo,
+        'mystery goo pieces': goo,
+      },
     );
-    expect(e.counted.length, 2);
-    // 100 g + 2 x 30 g servings = 160 g at 200 kcal / 100 g.
-    expect(e.nutrition.calories, 320);
+
+    // Only the explicit 100 g amount is counted. The 30 g labelled serving
+    // does not tell us the weight of each individual piece.
+    expect(e.counted, <String>['mystery goo']);
+    expect(e.skipped, <String>['mystery goo pieces']);
+    expect(e.skippedReasons['mystery goo pieces'], contains('conversion'));
+    expect(e.nutrition.calories, 200);
     expect(goo.nutritionFor(50)['protein_g'], 5);
   });
 
@@ -71,6 +78,15 @@ void main() {
 
     // A serving weight does not establish the density of a cup, spoon,
     // or millilitre. Do not silently treat flour like water.
+    for (final MeasureUnit unit in <MeasureUnit>[
+      MeasureUnit.unit,
+      MeasureUnit.piece,
+      MeasureUnit.clove,
+      MeasureUnit.slice,
+    ]) {
+      expect(NutritionEstimator.gramsOnline(flour, 1, unit), isNull,
+          reason: 'A labelled serving is not an individual-item weight for $unit');
+    }
     for (final MeasureUnit unit in <MeasureUnit>[
       MeasureUnit.cup,
       MeasureUnit.tbsp,

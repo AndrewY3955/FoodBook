@@ -57,11 +57,10 @@ class NutritionEstimator {
       _grams(food.gramsPerCup, food.gramsEach, qty, unit);
 
   /// Same for an online food. Only mass units are universally convertible
-  /// without food-specific density data. A labelled serving weight is used
-  /// for counted units; volume units are skipped rather than assuming water
-  /// density, which can be materially wrong for powders, oils, and solids.
+  /// without food-specific density data. A labelled serving weight does not
+  /// establish the weight of an individual piece, clove, or slice.
   static double? gramsOnline(FoodItem food, double qty, MeasureUnit unit) =>
-      _grams(null, food.servingGrams, qty, unit);
+      _grams(null, null, qty, unit);
 
   static double? _grams(
       double? cup, double? each, double qty, MeasureUnit unit) {
