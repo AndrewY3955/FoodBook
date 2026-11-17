@@ -91,11 +91,11 @@ class _DietNutritionSectionState extends ConsumerState<DietNutritionSection> {
                             food.servingLabel!.isNotEmpty)
                           food.servingLabel!,
                         if (food.servingGrams != null)
-                          '\${_fmt(food.servingGrams!)} g per labelled serving',
+                          '${_fmt(food.servingGrams!)} g per labelled serving',
                         if (food.per100g.calories != null)
-                          '\${food.per100g.calories} kcal / 100 g',
+                          '${food.per100g.calories} kcal / 100 g',
                         if (food.per100g.proteinG != null)
-                          '\${_fmt(food.per100g.proteinG!)} g protein / 100 g',
+                          '${_fmt(food.per100g.proteinG!)} g protein / 100 g',
                       ];
                       return ListTile(
                         contentPadding: EdgeInsets.zero,
