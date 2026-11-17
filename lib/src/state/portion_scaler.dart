@@ -1,3 +1,4 @@
+import '../core/ingredient_amount.dart';
 import '../core/quantity_format.dart';
 import '../data/models/enums.dart';
 import '../data/models/models.dart';
@@ -29,12 +30,16 @@ class PortionScaler {
   /// the call site.
   static RecipeIngredient scaleLine(RecipeIngredient line, double factor) {
     if (!line.unit.isScalable) return line;
+    final IngredientAmount? embedded =
+        IngredientAmount.fromName(line.name, line.quantity, line.unit);
+    if (embedded != null) {
+      line = line.copyWith(quantity: embedded.quantity, name: embedded.name);
+    }
     if ((factor - 1).abs() < 0.0001) return line;
 
     final double scaled = line.quantity * factor;
-    // Three decimals matches numeric(10,3) in the schema. Rounding here
-    // keeps the on-screen value and the value sent to the shopping list
-    // aggregator identical.
+    // Three decimals matches numeric(10,3) in the schema. Legacy names are
+    // normalized before rounding so their displayed amounts stay accurate.
     return line.copyWith(quantity: double.parse(scaled.toStringAsFixed(3)));
   }
 

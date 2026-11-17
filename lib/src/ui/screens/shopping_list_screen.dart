@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/ingredient_amount.dart';
 import '../../core/quantity_format.dart';
 import '../../data/models/enums.dart';
 import '../../data/models/models.dart';
@@ -289,7 +290,7 @@ class _CategoryBlock extends ConsumerWidget {
                   .read(shoppingListProvider.notifier)
                   .setChecked(item.id, v ?? false),
               title: Text(
-                item.label,
+                item.ingredientId == null ? item.label : _shoppingLabel(item),
                 style: TextStyle(
                   decoration:
                       item.isChecked ? TextDecoration.lineThrough : null,
@@ -298,7 +299,11 @@ class _CategoryBlock extends ConsumerWidget {
                       : null,
                 ),
               ),
-              subtitle: item.unit == MeasureUnit.unit && item.quantity == 1
+              subtitle: (item.ingredientId != null &&
+                          IngredientAmount.fromName(
+                                  item.label, item.quantity, item.unit) !=
+                              null) ||
+                      (item.unit == MeasureUnit.unit && item.quantity == 1)
                   ? null
                   : Text(QuantityFormat.withUnit(item.quantity, item.unit)),
             ),
@@ -306,6 +311,14 @@ class _CategoryBlock extends ConsumerWidget {
       ],
     );
   }
+}
+
+String _shoppingLabel(ShoppingItem item) {
+  final IngredientAmount? amount =
+      IngredientAmount.fromName(item.label, item.quantity, item.unit);
+  return amount == null
+      ? item.label
+      : '${QuantityFormat.amount(amount.quantity)} ${amount.name}';
 }
 
 class _Empty extends StatelessWidget {

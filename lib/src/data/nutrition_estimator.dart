@@ -1,4 +1,5 @@
 import 'models/enums.dart';
+import 'models/food_item.dart';
 import 'models/nutrition.dart';
 import 'nutrition_db.dart';
 import 'nutrition_micros.dart';
@@ -48,8 +49,16 @@ class NutritionEstimator {
   }
 
   /// Grams for [qty] of [unit] of [food], or null when it cannot be known.
-  static double? grams(Food food, double qty, MeasureUnit unit) {
-    final double? cup = food.gramsPerCup;
+  static double? grams(Food food, double qty, MeasureUnit unit) =>
+      _grams(food.gramsPerCup, food.gramsEach, qty, unit);
+
+  /// Same for an online food. Volumes assume water density (a rough guess
+  /// when the real density is unknown); counted units need a labelled serving.
+  static double? gramsOnline(FoodItem food, double qty, MeasureUnit unit) =>
+      _grams(240, food.servingGrams, qty, unit);
+
+  static double? _grams(
+      double? cup, double? each, double qty, MeasureUnit unit) {
     switch (unit) {
       case MeasureUnit.g:
         return qty;
@@ -77,7 +86,7 @@ class NutritionEstimator {
       case MeasureUnit.piece:
       case MeasureUnit.clove:
       case MeasureUnit.slice:
-        return food.gramsEach == null ? null : qty * food.gramsEach!;
+        return each == null ? null : qty * each;
       case MeasureUnit.bunch:
       case MeasureUnit.can:
       case MeasureUnit.package:
@@ -86,10 +95,14 @@ class NutritionEstimator {
     }
   }
 
+  /// Per-serving estimate. [online] maps an ingredient name to a food
+  /// found by live search; it is used only when the built-in table has
+  /// no match for that ingredient.
   static NutritionEstimate estimate(
     List<DraftIngredient> items,
-    int servings,
-  ) {
+    int servings, {
+    Map<String, FoodItem> online = const <String, FoodItem>{},
+  }) {
     final Map<String, double> sum = <String, double>{};
     void add(String k, double v) => sum[k] = (sum[k] ?? 0) + v;
 
@@ -98,6 +111,15 @@ class NutritionEstimator {
 
     for (final DraftIngredient i in items) {
       final Food? f = match(i.name);
+      final FoodItem? o = f == null ? online[i.name] : null;
+      if (o != null && i.quantity > 0) {
+        final double? g = gramsOnline(o, i.quantity, i.unit);
+        if (g != null) {
+          counted.add(i.name);
+          o.per100g.values.forEach((String k, double v) => add(k, v * g / 100));
+          continue;
+        }
+      }
       final double? g =
           f == null || i.quantity <= 0 ? null : grams(f, i.quantity, i.unit);
       if (f == null || g == null) {

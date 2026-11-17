@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../data/repositories/auth_repository.dart';
+import '../data/repositories/food_search_repository.dart';
 import '../data/repositories/import_repository.dart';
 import '../data/repositories/ingredient_repository.dart';
 import '../data/repositories/library_repository.dart';
@@ -55,6 +56,10 @@ final Provider<StorageRepository> storageRepositoryProvider =
 final Provider<ImportRepository> importRepositoryProvider =
     Provider<ImportRepository>(
         (Ref ref) => ImportRepository(ref.watch(supabaseClientProvider)));
+
+final Provider<FoodSearchRepository> foodSearchRepositoryProvider =
+    Provider<FoodSearchRepository>(
+        (Ref ref) => FoodSearchRepository(ref.watch(supabaseClientProvider)));
 
 /// Auth state as a stream. Everything downstream keys off this, so a
 /// token expiry or a sign-out on another device tears the session down

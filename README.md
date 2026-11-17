@@ -17,6 +17,9 @@ Open it here: **https://andrewy3955.github.io/FoodBook/**
 - Search, filter by meal, season, cuisine or diet, and switch between a picture grid and a simple list.
 - Scale a recipe up or down and the ingredient amounts change with it.
 - Share a recipe with everyone on **Discover**, or keep it private.
+- Choose from a shared seasoning catalog or add your own ingredients to your
+  recipe book. Custom ingredients used in a public recipe are visible to
+  everyone; unrelated custom ingredients remain private to your book.
 
 ### Cook
 - **Start cooking** opens one step at a time in big text, with built-in timers.
@@ -34,8 +37,9 @@ Open it here: **https://andrewy3955.github.io/FoodBook/**
 - Only what your pantry is missing is added. Tick items off as you shop, then clear the ticked ones with one tap.
 
 ### Nutrition and goals
-- On any recipe, tap **Calculate from ingredients** and the full label fills in per serving: calories, macros, fat breakdown, fiber, sugars, sodium, plus vitamins and minerals shown as % of daily value. Whole ingredients only (no restaurant food). Values are estimates and you can edit any of them.
+- On any recipe, tap **Calculate from ingredients** and the full label fills in per serving: calories, macros, fat breakdown, fiber, sugars, sodium, plus vitamins and minerals shown as % of daily value. Ingredients are matched against a built-in table first, then looked up live (USDA FoodData Central / Open Food Facts) when the table has no match. Values are estimates and you can edit any of them.
 - Tap the heart-monitor icon in the top bar for your **Nutrition** page: log recipes or quick-add foods to a daily diary by meal, and see calories remaining, macros and vitamins as % of your daily target.
+- In **Log food**, the **Foods & restaurants** tab searches the USDA FoodData Central database (generic foods, fast-food chains and hundreds of thousands of branded products, updated continuously by the USDA) plus Open Food Facts. Pick an amount in grams or labelled servings and it is logged with the full nutrient breakdown. This needs the `food-search` Edge Function: `supabase functions deploy food-search`, and set a free key from https://fdc.nal.usda.gov/api-key-signup with `supabase secrets set FDC_API_KEY=...` (the shared `DEMO_KEY` fallback is heavily rate limited).
 - Set your own daily calories, carb/protein/fat split, fiber, sugar and sodium goals (with presets and a calorie calculator). The Trends tab charts your intake over time. Your diary and goals are private to you.
 
 ### Sharing

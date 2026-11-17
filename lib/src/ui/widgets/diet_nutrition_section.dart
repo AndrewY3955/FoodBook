@@ -2,9 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../data/models/enums.dart';
+import '../../data/models/food_item.dart';
 import '../../data/models/models.dart';
 import '../../data/nutrition_estimator.dart';
+import '../../data/repositories/food_search_repository.dart';
 import '../../data/repositories/recipe_repository.dart';
+import '../../state/providers.dart';
 import '../../state/recipe_controllers.dart';
 import 'diet_chips.dart';
 
@@ -27,7 +31,31 @@ class _DietNutritionSectionState extends ConsumerState<DietNutritionSection> {
   /// rebuild with the new numbers.
   int _version = 0;
 
-  void _calculate() {
+  bool _busy = false;
+
+  /// Best live-search match for each ingredient the built-in table missed.
+  /// Any failure just leaves that ingredient out of the estimate.
+  Future<Map<String, FoodItem>> _lookUp(List<DraftIngredient> items) async {
+    final FoodSearchRepository repo = ref.read(foodSearchRepositoryProvider);
+    final Map<String, FoodItem> found = <String, FoodItem>{};
+    final Iterable<String> names = items
+        .where((DraftIngredient i) =>
+            i.quantity > 0 &&
+            i.unit != MeasureUnit.toTaste &&
+            NutritionEstimator.match(i.name) == null)
+        .map((DraftIngredient i) => i.name)
+        .toSet()
+        .take(10);
+    await Future.wait(names.map((String name) async {
+      try {
+        final List<FoodItem> hits = await repo.search(name);
+        if (hits.isNotEmpty) found[name] = hits.first;
+      } catch (_) {}
+    }));
+    return found;
+  }
+
+  Future<void> _calculate() async {
     final RecipeDraft draft = ref.read(recipeFormProvider);
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     if (draft.ingredients.isEmpty) {
@@ -36,12 +64,17 @@ class _DietNutritionSectionState extends ConsumerState<DietNutritionSection> {
       ));
       return;
     }
-    final NutritionEstimate est =
-        NutritionEstimator.estimate(draft.ingredients, draft.baseServings);
+    setState(() => _busy = true);
+    final Map<String, FoodItem> online = await _lookUp(draft.ingredients);
+    if (!mounted) return;
+    setState(() => _busy = false);
+    final NutritionEstimate est = NutritionEstimator.estimate(
+        draft.ingredients, draft.baseServings,
+        online: online);
     if (est.counted.isEmpty) {
       messenger.showSnackBar(const SnackBar(
         content: Text(
-            'No ingredients could be matched. Use common whole foods with an amount, like "2 cups flour".'),
+            'No ingredients could be matched. Use common foods with an amount, like "2 cups flour".'),
       ));
       return;
     }
@@ -51,10 +84,13 @@ class _DietNutritionSectionState extends ConsumerState<DietNutritionSection> {
     setState(() => _version++);
     final String skipped =
         est.skipped.isEmpty ? '' : ' Not counted: ${est.skipped.join(', ')}.';
+    final String looked = online.isEmpty
+        ? ''
+        : ' ${online.length} looked up online (${online.keys.join(', ')}).';
     messenger.showSnackBar(SnackBar(
       duration: const Duration(seconds: 8),
       content: Text(
-          'Calculated from ${est.counted.length} ingredient${est.counted.length == 1 ? '' : 's'}, per serving (recipe makes ${draft.baseServings}).$skipped'),
+          'Calculated from ${est.counted.length} ingredient${est.counted.length == 1 ? '' : 's'}, per serving (recipe makes ${draft.baseServings}).$looked$skipped'),
     ));
   }
 
@@ -125,15 +161,22 @@ class _DietNutritionSectionState extends ConsumerState<DietNutritionSection> {
           DietChips(selected: draft.diets, onToggle: c.toggleDiet),
           const SizedBox(height: 12),
           FilledButton.tonalIcon(
-            onPressed: _calculate,
-            icon: const Icon(Icons.calculate_outlined),
-            label: const Text('Calculate from ingredients'),
+            onPressed: _busy ? null : _calculate,
+            icon: _busy
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2))
+                : const Icon(Icons.calculate_outlined),
+            label: Text(
+                _busy ? 'Looking up foods…' : 'Calculate from ingredients'),
           ),
           Padding(
             padding: const EdgeInsets.only(top: 4),
             child: Text(
               'Fills in every nutrient from your ingredient names and amounts '
-              '(whole foods only, estimates per serving). You can edit any value.',
+              '(built-in foods first, then a live USDA / Open Food Facts '
+              'lookup; estimates per serving). You can edit any value.',
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ),

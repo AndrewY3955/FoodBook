@@ -21,7 +21,7 @@ class QuantityFormat {
     final int whole = value.floor();
     final double remainder = value - whole;
 
-    if (remainder < _tolerance) return '$whole';
+    if (remainder < _tolerance && whole > 0) return '$whole';
 
     for (final int denominator in _denominators) {
       for (int numerator = 1; numerator < denominator; numerator++) {
@@ -32,10 +32,8 @@ class QuantityFormat {
       }
     }
 
-    final String plain = value.toStringAsFixed(2);
-    return plain.endsWith('.00')
-        ? plain.substring(0, plain.length - 3)
-        : (plain.endsWith('0') ? plain.substring(0, plain.length - 1) : plain);
+    final String plain = value.toStringAsFixed(value < 0.01 ? 3 : 2);
+    return plain.replaceFirst(RegExp(r'\.?0+$'), '');
   }
 
   /// Full label: "2 1/2 cups", "3 cloves", "4" for bare counts.

@@ -26,8 +26,19 @@ FILES=(
   "migrations/0012_recipe_presentation.sql"
   "migrations/0013_fork_everything_account_delete.sql"
   "migrations/0014_diets_nutrition.sql"
-  "seed.sql"
 )
+
+if [[ "${FULL_MIGRATIONS:-0}" == 1 ]]; then
+  FILES+=(
+    "migrations/0015_library_delete_and_leave.sql"
+    "migrations/0016_pantry_match_quantities.sql"
+    "migrations/0017_recipe_albums.sql"
+    "migrations/0018_detailed_nutrition.sql"
+    "migrations/0019_maintenance_calories.sql"
+    "migrations/0020_shared_seasonings.sql"
+  )
+fi
+FILES+=("seed.sql")
 
 for f in "${FILES[@]}"; do
   if out=$(as_pg "$PSQL -f $ROOT/$f" 2>&1); then

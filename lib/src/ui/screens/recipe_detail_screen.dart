@@ -981,6 +981,9 @@ class _ManageMenu extends ConsumerWidget {
               leading:
                   Icon(recipe.isPublic ? Icons.lock_outline : Icons.public),
               title: Text(recipe.isPublic ? 'Make private' : 'Share publicly'),
+              subtitle: recipe.isPublic
+                  ? null
+                  : const Text('Includes custom ingredient names'),
               contentPadding: EdgeInsets.zero,
             ),
           ),

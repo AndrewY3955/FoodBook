@@ -549,7 +549,8 @@ class _BasicsPane extends ConsumerWidget {
           onChanged: controller.setPublic,
           title: const Text('Share publicly'),
           subtitle: const Text(
-            'Anyone can find and fork it. Your pantry and plan stay private.',
+            'Anyone can see and copy the recipe, including custom ingredient '
+            'names. Your pantry and plan stay private.',
           ),
           contentPadding: EdgeInsets.zero,
         ),
@@ -623,7 +624,9 @@ class _IngredientsPaneState extends ConsumerState<_IngredientsPane> {
                       dense: true,
                       leading: const Icon(Icons.add_circle_outline),
                       title: Text('Create "${_search.text.trim()}"'),
-                      subtitle: const Text('Only your library will see it'),
+                      subtitle: const Text(
+                        'Private unless used in a public recipe',
+                      ),
                       onTap: () async {
                         final String? libraryId =
                             ref.read(activeLibraryIdProvider);

@@ -1,7 +1,8 @@
 /// Whole-ingredient nutrition reference, per 100 g edible portion. Values
 /// are rounded USDA FoodData Central averages for common raw / dry
-/// ingredients (cooked only where the name says so). Restaurant and
-/// branded foods are intentionally not covered.
+/// ingredients (cooked only where the name says so). This is the offline
+/// first pass; restaurant and branded foods come from the live food-search
+/// service instead.
 class Food {
   const Food(
     this.names,

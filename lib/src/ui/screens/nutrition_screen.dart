@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/failure.dart';
+import '../../data/models/food_item.dart';
 import '../../data/models/models.dart';
+import '../../state/providers.dart';
 import '../../data/repositories/nutrition_repository.dart';
 import '../../state/nutrition_controllers.dart';
 import '../../state/recipe_controllers.dart';
@@ -107,6 +111,112 @@ Future<void> logRecipeToDiary(
           servings: servings,
           perServing: recipe.nutrition,
           recipeId: recipe.id,
+        );
+    ref.invalidate(foodLogProvider);
+    if (context.mounted) _toast(context, 'Added to your food diary.');
+  } catch (e) {
+    if (context.mounted) _toast(context, Failure.from(e).message);
+  }
+}
+
+/// Asks for meal and amount, then adds a searched food to the diary.
+Future<void> logFoodToDiary(
+  BuildContext context,
+  WidgetRef ref,
+  FoodItem food, {
+  DateTime? day,
+}) async {
+  String meal = _guessMeal();
+  final double? serving = food.servingGrams;
+  final TextEditingController amount =
+      TextEditingController(text: fmtNum(serving ?? 100));
+  double grams() => (double.tryParse(amount.text) ?? 0).clamp(0, 5000);
+  final bool? ok = await showDialog<bool>(
+    context: context,
+    builder: (BuildContext ctx) => StatefulBuilder(
+      builder: (BuildContext ctx, StateSetter set) {
+        final Nutrition n = food.nutritionFor(grams());
+        return AlertDialog(
+          title: const Text('Add to food diary'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(food.displayName,
+                    style: const TextStyle(fontWeight: FontWeight.w700)),
+                Text('Source: ${food.sourceLabel}',
+                    style: Theme.of(ctx).textTheme.bodySmall),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: meal,
+                  decoration: const InputDecoration(labelText: 'Meal'),
+                  items: <DropdownMenuItem<String>>[
+                    for (final String m in kMeals)
+                      DropdownMenuItem<String>(
+                          value: m, child: Text(mealLabel(m))),
+                  ],
+                  onChanged: (String? v) => set(() => meal = v ?? meal),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: amount,
+                  decoration: const InputDecoration(labelText: 'Amount (g)'),
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: <TextInputFormatter>[
+                    FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                  ],
+                  onChanged: (_) => set(() {}),
+                ),
+                if (serving != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Wrap(
+                      spacing: 8,
+                      children: <Widget>[
+                        for (final double m in <double>[0.5, 1, 2])
+                          ActionChip(
+                            label: Text(
+                                '${fmtNum(m)} × ${food.servingLabel ?? '${fmtNum(serving)} g'}'),
+                            onPressed: () =>
+                                set(() => amount.text = fmtNum(serving * m)),
+                          ),
+                      ],
+                    ),
+                  ),
+                const SizedBox(height: 12),
+                Text(
+                  '${fmtNum(n.calories?.toDouble() ?? 0, decimals: 0)} cal · '
+                  '${fmtNum(n.proteinG ?? 0)} g protein · '
+                  '${fmtNum(n.carbsG ?? 0)} g carbs · '
+                  '${fmtNum(n.fatG ?? 0)} g fat',
+                ),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancel')),
+            FilledButton(
+                onPressed: grams() > 0 ? () => Navigator.pop(ctx, true) : null,
+                child: const Text('Add')),
+          ],
+        );
+      },
+    ),
+  );
+  final double g = grams();
+  amount.dispose();
+  if (ok != true || g <= 0 || !context.mounted) return;
+  try {
+    await ref.read(nutritionRepositoryProvider).add(
+          day: day ?? _today(),
+          meal: meal,
+          title: '${food.displayName} (${fmtNum(g)} g)',
+          servings: 1,
+          perServing: food.nutritionFor(g),
         );
     ref.invalidate(foodLogProvider);
     if (context.mounted) _toast(context, 'Added to your food diary.');
@@ -402,6 +512,81 @@ class _LogSheet extends ConsumerStatefulWidget {
 
 class _LogSheetState extends ConsumerState<_LogSheet> {
   String _q = '';
+  bool _foods = false;
+  Timer? _debounce;
+  Future<List<FoodItem>>? _results;
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  void _onQuery(String v) {
+    _debounce?.cancel();
+    if (!_foods) {
+      setState(() => _q = v.toLowerCase());
+      return;
+    }
+    _q = v;
+    _debounce = Timer(const Duration(milliseconds: 450), () {
+      if (!mounted) return;
+      setState(() {
+        _results = _q.trim().length < 2
+            ? null
+            : ref.read(foodSearchRepositoryProvider).search(_q);
+      });
+    });
+  }
+
+  Widget _foodResults() {
+    if (_results == null) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Text(
+            'Search any food, packaged product or restaurant item, '
+            'like "greek yogurt", "big mac" or "chipotle burrito bowl".',
+            textAlign: TextAlign.center,
+          ),
+        ),
+      );
+    }
+    return FutureBuilder<List<FoodItem>>(
+      future: _results,
+      builder: (BuildContext _, AsyncSnapshot<List<FoodItem>> snap) {
+        if (snap.connectionState != ConnectionState.done) {
+          return const _Loading();
+        }
+        if (snap.hasError) {
+          return Center(child: Text(Failure.from(snap.error!).message));
+        }
+        final List<FoodItem> items = snap.data ?? const <FoodItem>[];
+        if (items.isEmpty) return const Center(child: Text('No foods found.'));
+        return ListView.builder(
+          itemCount: items.length,
+          itemBuilder: (BuildContext _, int i) {
+            final FoodItem f = items[i];
+            final double? g = f.servingGrams;
+            final double kcal = (f.per100g['calories'] ?? 0) * (g ?? 100) / 100;
+            return ListTile(
+              title: Text(f.name, maxLines: 2, overflow: TextOverflow.ellipsis),
+              subtitle: Text(
+                '${f.isBranded ? '${f.brand} · ' : ''}'
+                '${fmtNum(kcal, decimals: 0)} cal per '
+                '${g == null ? '100 g' : (f.servingLabel ?? '${fmtNum(g)} g')}'
+                ' · ${f.sourceLabel}',
+              ),
+              onTap: () async {
+                Navigator.pop(context);
+                await logFoodToDiary(context, ref, f, day: widget.day);
+              },
+            );
+          },
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -420,12 +605,34 @@ class _LogSheetState extends ConsumerState<_LogSheet> {
             children: <Widget>[
               Text('Log food', style: Theme.of(context).textTheme.titleLarge),
               const SizedBox(height: 8),
+              SegmentedButton<bool>(
+                segments: const <ButtonSegment<bool>>[
+                  ButtonSegment<bool>(
+                      value: false,
+                      icon: Icon(Icons.menu_book_outlined),
+                      label: Text('My recipes')),
+                  ButtonSegment<bool>(
+                      value: true,
+                      icon: Icon(Icons.restaurant_outlined),
+                      label: Text('Foods & restaurants')),
+                ],
+                selected: <bool>{_foods},
+                onSelectionChanged: (Set<bool> s) => setState(() {
+                  _foods = s.first;
+                  _q = '';
+                  _results = null;
+                }),
+              ),
+              const SizedBox(height: 8),
               TextField(
-                decoration: const InputDecoration(
-                  prefixIcon: Icon(Icons.search),
-                  hintText: 'Search your recipes',
+                key: ValueKey<bool>(_foods),
+                decoration: InputDecoration(
+                  prefixIcon: const Icon(Icons.search),
+                  hintText: _foods
+                      ? 'Search foods, brands, restaurants'
+                      : 'Search your recipes',
                 ),
-                onChanged: (String v) => setState(() => _q = v.toLowerCase()),
+                onChanged: _onQuery,
               ),
               const SizedBox(height: 8),
               OutlinedButton.icon(
@@ -438,38 +645,42 @@ class _LogSheetState extends ConsumerState<_LogSheet> {
               ),
               const SizedBox(height: 8),
               Expanded(
-                child: recipes.when(
-                  loading: () => const _Loading(),
-                  error: (Object e, StackTrace _) =>
-                      Center(child: Text(Failure.from(e).message)),
-                  data: (List<Recipe> list) {
-                    final List<Recipe> shown = list
-                        .where((Recipe r) => r.title.toLowerCase().contains(_q))
-                        .toList();
-                    if (shown.isEmpty) {
-                      return const Center(child: Text('No recipes found.'));
-                    }
-                    return ListView.builder(
-                      itemCount: shown.length,
-                      itemBuilder: (BuildContext _, int i) {
-                        final Recipe r = shown[i];
-                        final int? kcal = r.nutrition.calories;
-                        return ListTile(
-                          title: Text(r.title),
-                          subtitle: Text(kcal == null
-                              ? 'No nutrition yet'
-                              : '$kcal cal per serving'),
-                          enabled: !r.nutrition.isEmpty,
-                          onTap: () async {
-                            Navigator.pop(context);
-                            await logRecipeToDiary(context, ref, r,
-                                day: widget.day);
-                          },
-                        );
-                      },
-                    );
-                  },
-                ),
+                child: _foods
+                    ? _foodResults()
+                    : recipes.when(
+                        loading: () => const _Loading(),
+                        error: (Object e, StackTrace _) =>
+                            Center(child: Text(Failure.from(e).message)),
+                        data: (List<Recipe> list) {
+                          final List<Recipe> shown = list
+                              .where((Recipe r) =>
+                                  r.title.toLowerCase().contains(_q))
+                              .toList();
+                          if (shown.isEmpty) {
+                            return const Center(
+                                child: Text('No recipes found.'));
+                          }
+                          return ListView.builder(
+                            itemCount: shown.length,
+                            itemBuilder: (BuildContext _, int i) {
+                              final Recipe r = shown[i];
+                              final int? kcal = r.nutrition.calories;
+                              return ListTile(
+                                title: Text(r.title),
+                                subtitle: Text(kcal == null
+                                    ? 'No nutrition yet'
+                                    : '$kcal cal per serving'),
+                                enabled: !r.nutrition.isEmpty,
+                                onTap: () async {
+                                  Navigator.pop(context);
+                                  await logRecipeToDiary(context, ref, r,
+                                      day: widget.day);
+                                },
+                              );
+                            },
+                          );
+                        },
+                      ),
               ),
             ],
           ),

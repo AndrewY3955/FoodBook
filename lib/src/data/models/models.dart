@@ -149,10 +149,11 @@ class RecipeIngredient {
     );
   }
 
-  RecipeIngredient copyWith({double? quantity}) => RecipeIngredient(
+  RecipeIngredient copyWith({double? quantity, String? name}) =>
+      RecipeIngredient(
         id: id,
         ingredientId: ingredientId,
-        name: name,
+        name: name ?? this.name,
         quantity: quantity ?? this.quantity,
         unit: unit,
         category: category,

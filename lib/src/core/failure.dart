@@ -70,6 +70,24 @@ class Failure implements Exception {
             error.code?.contains('rate_limit') == true)) {
       return 'Too many attempts. Wait a minute and try again.';
     }
+    final String code =
+        (error is AuthApiException ? error.code ?? '' : '').toLowerCase();
+    if (code == 'weak_password' || raw.contains('password')) {
+      return 'That password is too weak or was rejected. Try a longer, less common one.';
+    }
+    if (code == 'email_address_invalid' ||
+        raw.contains('invalid email') ||
+        raw.contains('email address') && raw.contains('invalid')) {
+      return 'That email address was not accepted. Check it or use a different one.';
+    }
+    if (code == 'signup_disabled' || raw.contains('signups not allowed')) {
+      return 'Sign-ups are currently disabled.';
+    }
+    if (code == 'unexpected_failure' ||
+        raw.contains('database error') ||
+        raw.contains('error sending')) {
+      return 'We could not create the account right now. Please try again later.';
+    }
     return 'Sign-in failed. Please try again.';
   }
 
