@@ -79,7 +79,7 @@ class _DietNutritionSectionState extends ConsumerState<DietNutritionSection> {
       return;
     }
     ref.read(recipeFormProvider.notifier).setNutrition(
-          est.nutrition.withServingSize(draft.nutrition.servingSize),
+          draft.nutrition.fillMissingFrom(est.nutrition),
         );
     setState(() => _version++);
     final String skipped =
