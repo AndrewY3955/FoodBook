@@ -157,6 +157,17 @@ class Nutrition {
     return Nutrition(values: next, servingSize: servingSize);
   }
 
+  /// Returns this nutrition with only fields missing from it filled by [other].
+  ///
+  /// Existing values are treated as user-authored and are never overwritten.
+  /// This is useful when applying an estimate to a recipe that may already
+  /// contain manually entered nutrition facts.
+  Nutrition fillMissingFrom(Nutrition other) {
+    final Map<String, double> next = Map<String, double>.of(other.values);
+    next.addAll(values);
+    return Nutrition(values: next, servingSize: servingSize ?? other.servingSize);
+  }
+
   /// Every value multiplied by [factor] (servings eaten).
   Nutrition scaled(double factor) => Nutrition(
         values: <String, double>{
