@@ -56,6 +56,31 @@ void main() {
     expect(goo.nutritionFor(50)['protein_g'], 5);
   });
 
+  test('applying an estimate preserves existing nutrition and fills gaps', () {
+    const Nutrition entered = Nutrition(
+      values: <String, double>{
+        'calories': 777,
+        'sodium_mg': 900,
+      },
+      servingSize: '1 bowl',
+    );
+    const Nutrition estimate = Nutrition(
+      values: <String, double>{
+        'calories': 500,
+        'protein_g': 24,
+        'sodium_mg': 300,
+      },
+      servingSize: '1 serving',
+    );
+
+    final Nutrition merged = entered.fillMissingFrom(estimate);
+
+    expect(merged['calories'], 777);
+    expect(merged['sodium_mg'], 900);
+    expect(merged['protein_g'], 24);
+    expect(merged.servingSize, '1 bowl');
+  });
+
   test('micros survive a json round trip', () {
     final Nutrition n = const Nutrition().withValue('zinc_mg', 3.5);
     final Nutrition back = Nutrition.fromJson(n.toJson());
