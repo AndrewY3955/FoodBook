@@ -56,6 +56,35 @@ void main() {
     expect(goo.nutritionFor(50)['protein_g'], 5);
   });
 
+  test('online foods require food-specific data for volume conversions', () {
+    final FoodItem flour = FoodItem.fromJson(<String, dynamic>{
+      'id': 'fdc:2',
+      'name': 'Unknown flour',
+      'per100g': <String, dynamic>{'calories': 364, 'carbs_g': 76},
+      'servingGrams': 30,
+    });
+
+    expect(NutritionEstimator.gramsOnline(flour, 1, MeasureUnit.g), 1);
+    expect(NutritionEstimator.gramsOnline(flour, 1, MeasureUnit.kg), 1000);
+    expect(NutritionEstimator.gramsOnline(flour, 1, MeasureUnit.oz), 28.35);
+    expect(NutritionEstimator.gramsOnline(flour, 1, MeasureUnit.lb), 453.6);
+
+    // A serving weight does not establish the density of a cup, spoon,
+    // or millilitre. Do not silently treat flour like water.
+    for (final MeasureUnit unit in <MeasureUnit>[
+      MeasureUnit.cup,
+      MeasureUnit.tbsp,
+      MeasureUnit.tsp,
+      MeasureUnit.flOz,
+      MeasureUnit.ml,
+      MeasureUnit.l,
+      MeasureUnit.pinch,
+    ]) {
+      expect(NutritionEstimator.gramsOnline(flour, 1, unit), isNull,
+          reason: 'No food-specific volume conversion is available for $unit');
+    }
+  });
+
   test('applying an estimate preserves existing nutrition and fills gaps', () {
     const Nutrition entered = Nutrition(
       values: <String, double>{
